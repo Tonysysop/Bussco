@@ -1,0 +1,24 @@
+# Connection settings come from the environment (see .env.example).
+# Unset host/port/username fall back to the local Unix socket and OS user.
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  host: <%= ENV["DATABASE_HOST"] %>
+  port: <%= ENV["DATABASE_PORT"] %>
+  username: <%= ENV["DATABASE_USERNAME"] %>
+  password: <%= ENV["DATABASE_PASSWORD"] %>
+
+development:
+  <<: *default
+  database: bussco_development
+
+# Erased and rebuilt by the test suite. Never point this at the development database.
+test:
+  <<: *default
+  database: bussco_test
+
+# Production reads DATABASE_URL, which Rails merges over this entry.
+production:
+  <<: *default
+  database: bussco_production

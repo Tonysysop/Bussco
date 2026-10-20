@@ -1,0 +1,30 @@
+# Bundler / Rails
+/.bundle
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+/public/assets
+/storage/*
+!/storage/.keep
+/coverage
+
+# Secrets
+/config/master.key
+/config/credentials/*.key
+.env
+.env.*
+!.env.example
+
+# Local Claude settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Editors / OS
+.idea
+.vscode/*
+.DS_Store
+*.sw?

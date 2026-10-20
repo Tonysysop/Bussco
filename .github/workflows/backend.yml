@@ -1,0 +1,51 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths: ["Backend/**", ".github/workflows/backend.yml"]
+  push:
+    branches: [main]
+    paths: ["Backend/**", ".github/workflows/backend.yml"]
+
+defaults:
+  run:
+    working-directory: Backend
+
+jobs:
+  lint-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: Backend
+          bundler-cache: true
+      - run: bin/rubocop -f github
+      - run: bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
+      - run: bin/bundler-audit
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: bussco
+          POSTGRES_PASSWORD: bussco
+        ports: ["5432:5432"]
+        options: --health-cmd="pg_isready -U bussco" --health-interval=5s --health-timeout=3s --health-retries=10
+    env:
+      RAILS_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: bussco
+      DATABASE_PASSWORD: bussco
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: Backend
+          bundler-cache: true
+      - run: bin/rails db:prepare
+      - run: bin/rails zeitwerk:check
+      - run: bin/rails test

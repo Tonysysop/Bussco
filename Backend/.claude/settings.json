@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bin/rails test:*)",
+      "Bash(bin/rails zeitwerk:check)",
+      "Bash(bin/rubocop:*)",
+      "Bash(bin/brakeman:*)",
+      "Bash(bin/bundler-audit:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./config/master.key)",
+      "Read(./config/credentials/*.key)"
+    ]
+  }
+}
