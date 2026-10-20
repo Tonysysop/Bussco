@@ -1,8 +1,8 @@
 # Increment 0 — Browser authentication foundations
 
 Status: **implemented** (session middleware, CSRF, Origin checks, `GET /api/v1/csrf`,
-`rotate_browser_session`). The database-backed auth session rules in §6 are
-built in increment 3.
+`rotate_browser_session`). The database-backed auth sessions in §6 were built in
+increment 3 ([sessions.md](sessions.md)).
 
 ## Scope
 - Cookie and Rails session middleware for the API.
@@ -41,7 +41,7 @@ scheme designed for it at that time. Don't weaken these checks or call
 | | Rails session (CSRF) | Authentication session |
 |---|---|---|
 | Purpose | Holds the CSRF secret (`session[:_csrf_token]`, managed by Rails) | Proves who is logged in |
-| Storage | `ActionDispatch::Session::CookieStore`, encrypted cookie `_bussco_session` | `sessions` table row; signed cookie `bussco_auth` holds only the row id |
+| Storage | `ActionDispatch::Session::CookieStore`, encrypted cookie `_bussco_session` | `sessions` table row; cookie `bussco_auth` holds a random token whose SHA-256 digest is the row's `token_digest` |
 | Exists | From the first token request, logged in or not | Only after login |
 | Revocation | `reset_session` | Delete the row (server-side) |
 
@@ -187,9 +187,10 @@ session (§6, increment 3). A test pins this behaviour so it isn't mistaken for
 a revocation guarantee.
 
 ### 6. Revocable database-backed auth sessions (rules; table built in increment 3)
-- `sessions` row: `user_id`, `created_at`, `last_seen_at`, `ip_address`,
-  `user_agent`, `admin` (boolean, default false).
-- Cookie `bussco_auth`: `cookies.signed`, `httponly: true`, `same_site: :lax`,
+- `sessions` row: `user_id`, `token_digest`, `created_at`, `last_seen_at`, `ip_address`,
+  `user_agent`. The `admin` flag is added in increment 5.
+- Cookie `bussco_auth`: a random opaque token (only its SHA-256 digest is stored),
+  `httponly: true`, `same_site: :strict`,
   `secure` in production, host-only (no `domain`), and no `expires`, so it lasts
   as long as the browser session. Expiry is enforced on the server, never by the
   cookie.
@@ -236,7 +237,7 @@ a revocation guarantee.
 ## Security requirements
 - Never log the CSRF token, `_bussco_session`, or `bussco_auth`. The existing
   `filter_parameters` entries `:token` and `:session` cover `csrf_token`,
-  `authenticity_token` and `_bussco_session`; add `bussco_auth` in increment 3.
+  `authenticity_token` and `_bussco_session`; `:bussco_auth` was added in increment 3.
   Don't log request headers.
 - Failure responses carry only an error code, never the reason a token failed.
 

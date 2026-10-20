@@ -1,0 +1,55 @@
+# A member's login (docs/auth/sessions.md). Deleting the row revokes it immediately.
+class Session < ApplicationRecord
+  IDLE_TIMEOUT = 30.minutes
+  ABSOLUTE_LIFETIME = 12.hours
+  TOUCH_INTERVAL = 1.minute
+
+  belongs_to :user
+
+  scope :expired, -> { where("last_seen_at < ? OR created_at < ?", IDLE_TIMEOUT.ago, ABSOLUTE_LIFETIME.ago) }
+
+  # Returns the plaintext token for the cookie; only its digest is stored.
+  # shortcut: expired rows are swept only for the user logging in; add a scheduled job if the table grows.
+  def self.start(user, request)
+    user.sessions.expired.delete_all
+    token = SecureRandom.urlsafe_base64(32)
+    create!(user:, token_digest: digest(token), last_seen_at: Time.current,
+      ip_address: request.remote_ip, user_agent: request.user_agent&.first(255))
+    token
+  end
+
+  # The live session for this token, or nil. A session that has expired, or whose user is no
+  # longer active, is deleted.
+  def self.resume(token)
+    session = find_by(token_digest: digest(token)) or return
+
+    if session.expired? || !session.user.active?
+      session.delete
+      return
+    end
+
+    session.touch_last_seen
+    session
+  end
+
+  def self.revoke(token)
+    where(token_digest: digest(token)).delete_all
+  end
+
+  # SHA-256 without a key is enough: the token has 256 bits of entropy, so it can't be guessed.
+  def self.digest(token)
+    Digest::SHA256.hexdigest(token)
+  end
+
+  def expired?
+    last_seen_at < IDLE_TIMEOUT.ago || created_at < ABSOLUTE_LIFETIME.ago
+  end
+
+  # One conditional UPDATE, so concurrent requests can only move last_seen_at forward, at most
+  # once a minute, and never revive a row that expired or was deleted in the meantime.
+  # created_at is never written, so the absolute lifetime can't be extended.
+  def touch_last_seen
+    now = Time.current
+    Session.where(id:, last_seen_at: (now - IDLE_TIMEOUT)...(now - TOUCH_INTERVAL)).update_all(last_seen_at: now)
+  end
+end

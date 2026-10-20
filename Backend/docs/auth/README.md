@@ -1,8 +1,8 @@
 # Authentication — index
 
-Status: increments 0 (browser foundations), 1 (registration) and 2 (email verification)
-are **implemented**; increments 3–5 are **planned**. Users can register and verify their
-email, but nobody can log in yet.
+Status: increments 0–3 (browser foundations, registration, email verification, member
+sessions) are **implemented**; increments 4–5 are **planned**. Members can register, verify
+their email (which signs in the registering browser), log in and log out.
 
 Read only the spec for the increment you are implementing.
 
@@ -11,7 +11,7 @@ Read only the spec for the increment you are implementing.
 | 0 | Browser foundations: cookies, CSRF, origin checks, session rules (**implemented**) | [browser-foundations.md](browser-foundations.md) | Scaffold |
 | 1 | Registration + DB constraints (**implemented**) | [registration.md](registration.md) | 0 |
 | 2 | Email verification by six-digit code (**implemented**) | [email-verification.md](email-verification.md) | 0, 1 |
-| 3 | Member sessions (login, logout, current user) | [sessions.md](sessions.md) | 0, 1, 2 |
+| 3 | Member sessions (login, logout, current user) (**implemented**) | [sessions.md](sessions.md) | 0, 1, 2 |
 | 4 | Password recovery + password change | [password-recovery.md](password-recovery.md) | 0, 1, 3 |
 | 5 | Admin login + controlled provisioning | [admin-access.md](admin-access.md) | 0, 2, 3 |
 

@@ -45,6 +45,46 @@ module Api
         value if value.is_a?(String) && !value.include?("\0")
       end
 
+      # Member login (docs/auth/sessions.md). The cookie holds a random token; only its digest is
+      # stored. Strict: only the app's own same-origin requests ever need it.
+      def start_session_for(user)
+        terminate_session # this browser's previous login only; other devices keep theirs
+        csrf_token = rotate_browser_session
+        cookies[:bussco_auth] = { value: Session.start(user, request), httponly: true, same_site: :strict,
+          secure: Rails.env.production? }
+        csrf_token
+      end
+
+      def authenticated_session
+        return @authenticated_session if defined?(@authenticated_session)
+
+        token = cookies[:bussco_auth]
+        @authenticated_session = token && Session.resume(token)
+        cookies.delete(:bussco_auth) if token && !@authenticated_session
+        @authenticated_session
+      end
+
+      def require_authentication
+        render json: { error: "unauthenticated" }, status: :unauthorized unless authenticated_session
+      end
+
+      # Deletes the row, so a copy of the cookie stops working too.
+      def terminate_session
+        Session.revoke(cookies[:bussco_auth]) if cookies[:bussco_auth]
+        cookies.delete(:bussco_auth)
+      end
+
+      def user_json(user)
+        {
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          email_verified: user.email_verified_at.present?,
+          account_status: user.account_status,
+          membership_status: user.membership_status
+        }
+      end
+
       def rate_limited(retry_after = 15.minutes)
         response.set_header("Retry-After", retry_after.to_i.to_s)
         render json: { error: "rate_limited" }, status: :too_many_requests

@@ -17,9 +17,23 @@ class Api::V1::Auth::EmailVerificationsControllerTest < ActionDispatch::Integrat
     post PATH, params: { email: }, headers:, env:, as: :json
   end
 
+  # Like the client, swaps in the rotated CSRF token when verification signs this browser in.
   def verify(code, email: EMAIL, headers: @headers)
     patch PATH, params: { email:, code: }, headers:, as: :json
+    new_token = response.parsed_body["csrf_token"] if response.media_type == "application/json"
+    @headers = @headers.merge("X-CSRF-Token" => new_token) if new_token
   end
+
+  # A separate cookie jar: a browser that didn't register.
+  def verify_in_other_browser(code)
+    other = open_session
+    other.get "/api/v1/csrf"
+    other.patch PATH, params: { email: EMAIL, code: },
+      headers: { "Origin" => "http://www.example.com", "X-CSRF-Token" => other.response.parsed_body["csrf_token"] }, as: :json
+    other
+  end
+
+  def auth_cookie_set?(response) = Array(response.headers["Set-Cookie"]).join("\n").include?("bussco_auth=")
 
   def last_code
     ActionMailer::Base.deliveries.last.text_part.body.decoded[/\b\d{6}\b/]
@@ -29,23 +43,55 @@ class Api::V1::Auth::EmailVerificationsControllerTest < ActionDispatch::Integrat
 
   def user = User.find_by!(email: EMAIL)
 
-  test "the emailed code verifies the email once, without logging the user in" do
+  test "verifying in the registering browser verifies the email and signs it in" do
     perform_enqueued_jobs { register }
-    verify(last_code)
+    old_token = @headers["X-CSRF-Token"]
 
+    assert_difference("Session.count") { verify(last_code) }
     assert_response :ok
-    assert_equal({ "email_verified" => true }, response.parsed_body)
+    body = response.parsed_body
+    assert_equal true, body["email_verified"]
+    assert_equal EMAIL, body.dig("user", "email")
+    assert_not_equal old_token, body["csrf_token"]
+    assert auth_cookie_set?(response)
     assert user.email_verified_at?
     assert_nil user.email_verification_code_digest
-    assert_no_match(/bussco_auth/, Array(response.headers["Set-Cookie"]).join("\n"))
     assert_equal [ "active", "not_started" ], [ user.account_status, user.membership_status ]
+
+    get "/api/v1/auth/me"
+    assert_response :ok
+  end
+
+  test "verifying in another browser verifies the email but needs a normal login" do
+    perform_enqueued_jobs { register }
+    other = assert_no_difference("Session.count") { verify_in_other_browser(last_code) }
+
+    assert_equal 200, other.response.status
+    assert_equal({ "email_verified" => true }, other.response.parsed_body)
+    assert_not auth_cookie_set?(other.response)
+    assert user.email_verified_at?
+  end
+
+  test "a disabled account is verified but not signed in" do
+    perform_enqueued_jobs { register }
+    user.update_columns(account_status: "disabled")
+
+    assert_no_difference("Session.count") { verify(last_code) }
+    assert_response :ok
+    assert_equal({ "email_verified" => true }, response.parsed_body)
+  end
+
+  test "registered_user_id alone authenticates nothing" do
+    register
+    get "/api/v1/auth/me"
+    assert_response :unauthorized
   end
 
   test "a used code can't be replayed" do
     perform_enqueued_jobs { register }
     code = last_code
     verify(code)
-    verify(code)
+    assert_no_difference("Session.count") { verify(code) }
 
     assert_response :unprocessable_content
     assert_equal({ "error" => "invalid_code" }, response.parsed_body)
