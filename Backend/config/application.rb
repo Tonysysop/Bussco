@@ -47,5 +47,13 @@ module Bussco
       httponly: true, same_site: :lax, secure: Rails.env.production?
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use config.session_store, config.session_options
+
+    # Mail goes through Resend's SMTP (docs/auth/email-verification.md); used only where
+    # delivery_method is :smtp. Port 465 is implicit TLS, so nothing is ever sent in clear.
+    config.action_mailer.smtp_settings = { address: "smtp.resend.com", port: 465, tls: true,
+      user_name: "resend", password: ENV["RESEND_API_KEY"], authentication: :plain }
+    config.action_mailer.default_options = { from: ENV.fetch("MAIL_FROM", "BUSSCO <no-reply@localhost>") }
+    # Action Mailer logs whole messages, verification codes included, at debug level.
+    config.action_mailer.logger = nil
   end
 end

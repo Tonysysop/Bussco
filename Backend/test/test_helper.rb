@@ -10,6 +10,17 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
+    # Everything logged while the block runs, at debug level (the most verbose).
+    def capture_log
+      io = StringIO.new
+      sink = ActiveSupport::Logger.new(io)
+      Rails.logger.broadcast_to(sink)
+      yield
+      io.string
+    ensure
+      Rails.logger.stop_broadcasting_to(sink)
+    end
+
     # Add more helper methods to be used by all tests here...
   end
 end

@@ -22,7 +22,9 @@ cooperative formed by BUA staff. This Rails API serves the BUSSCO React app.
   `Api::V1::BaseController` (session cookie, CSRF, Origin checks). A future
   non-browser integration gets its own base controller and authentication.
 - Mail goes through Action Mailer; background work through Active Job
-  (async adapter for now; choose a production backend when a feature needs one).
+  (async adapter for now). A durable backend such as Solid Queue is required before
+  production deployment, because verification emails are queued
+  (docs/auth/email-verification.md).
 - No Redis, Sidekiq, serializers, or authorization frameworks until required.
 
 ## Origin and proxying

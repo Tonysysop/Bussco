@@ -1,0 +1,13 @@
+BUSSCO
+
+Hello <%= @user.full_name %>,
+
+Use this code to verify your email address:
+
+<%= @code %>
+
+This code expires in <%= User::EMAIL_CODE_TTL.in_minutes.to_i %> minutes. Never share it with anyone.
+
+If you didn't create a BUSSCO account, you can ignore this email.
+
+BUSSCO, BUA Senior Staff Multipurpose Cooperative Society

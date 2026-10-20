@@ -12,6 +12,7 @@ Rails.application.routes.draw do
 
       namespace :auth do
         resources :registrations, only: :create
+        resource :email_verification, only: [ :create, :update ]
       end
     end
   end

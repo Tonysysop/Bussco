@@ -8,7 +8,8 @@ build differs from or adds to this spec.
 - `POST /api/v1/auth/registrations`, with rate limiting.
 
 ## Exclusions
-- Sending or verifying email (increment 2). Registration sends no mail.
+- Verifying email (increment 2). Since increment 2, a successful registration also sends the
+  first verification code; see [email-verification.md](email-verification.md).
 - Creating an authenticated session. Registration never logs the user in (increment 3).
 - Membership review, SAP ID linking, admin provisioning.
 
@@ -234,3 +235,6 @@ Request tests run with forgery protection enabled (see increment 0).
   controller's handling every run. *Genuine* (non-deterministic interleaving):
   four threads on independent connections create the same email; asserts
   exactly one row and that every loser failed cleanly, whatever the order.
+- **Increment 2 moved** `RATE_LIMIT_STORE`, `rate_limited` and the NUL/non-string sanitiser
+  (`string_param`) up to `Api::V1::BaseController` so email verification shares them. No
+  behaviour change; `capture_log` moved to `test/test_helper.rb`.
