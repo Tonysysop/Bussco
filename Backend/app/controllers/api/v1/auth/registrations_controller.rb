@@ -2,7 +2,7 @@ module Api
   module V1
     module Auth
       # Public registration (docs/auth/registration.md). Creates an unverified, non-member account
-      # and sends its first verification code; no session, cookie, role or membership.
+      # and sends its first verification code; no login, role or membership.
       class RegistrationsController < BaseController
         # Counts per request.remote_ip (Rails' default `by:`).
         rate_limit to: 10, within: 15.minutes, store: RATE_LIMIT_STORE,
@@ -12,6 +12,8 @@ module Api
           user = User.new(registration_params)
 
           if user.save
+            # Onboarding state, not authentication: lets this browser be signed in when it verifies.
+            session[:registered_user_id] = user.id
             user.send_email_verification
             render json: { user: user_json(user) }, status: :created
           else
@@ -29,17 +31,6 @@ module Api
 
         def registration_params
           params.expect(user: [ :full_name, :email, :password ]).to_h.transform_values { |value| string_param(value) }
-        end
-
-        def user_json(user)
-          {
-            id: user.id,
-            full_name: user.full_name,
-            email: user.email,
-            email_verified: user.email_verified_at.present?,
-            account_status: user.account_status,
-            membership_status: user.membership_status
-          }
         end
 
         def render_errors(user)

@@ -10,7 +10,9 @@ build differs from or adds to this spec.
 ## Exclusions
 - Verifying email (increment 2). Since increment 2, a successful registration also sends the
   first verification code; see [email-verification.md](email-verification.md).
-- Creating an authenticated session. Registration never logs the user in (increment 3).
+- Creating an authenticated session. Registration never logs the user in. It stores
+  `registered_user_id` in the Rails session as onboarding state, so that verifying the email in
+  this browser can sign it in ([sessions.md](sessions.md#automatic-login-after-email-verification)).
 - Membership review, SAP ID linking, admin provisioning.
 
 ## Initial account state
@@ -151,7 +153,8 @@ The model has matching validations, plus string-backed enums for
 - CSRF + allowed `Origin` required (increment 0).
 - Passwords and `password_digest` are never logged or returned. The
   `filter_parameters` entry `:passw` covers both.
-- No authenticated session is created and no `bussco_auth` cookie is set.
+- No authenticated session is created and no `bussco_auth` cookie is set; `registered_user_id`
+  alone authenticates nothing.
 
 ## Acceptance criteria
 Request tests run with forgery protection enabled (see increment 0).

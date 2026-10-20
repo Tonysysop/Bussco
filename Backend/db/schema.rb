@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "token_digest", null: false
+    t.string "ip_address"
+    t.string "user_agent"
+    t.datetime "last_seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["token_digest"], name: "index_sessions_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
 
   create_table "solid_cache_entries", force: :cascade do |t|
     t.binary "key", null: false
@@ -49,4 +61,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
     t.check_constraint "membership_status::text = 'not_started'::text", name: "users_membership_status_allowed"
     t.check_constraint "sap_id IS NULL OR sap_id::text !~ '^\\s*$'::text", name: "users_sap_id_not_blank"
   end
+
+  add_foreign_key "sessions", "users", on_delete: :cascade
 end

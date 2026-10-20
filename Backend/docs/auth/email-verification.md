@@ -9,7 +9,10 @@ Status: **implemented**. See "Implementation notes" at the end.
 ## Exclusions
 - Login (increment 3). Until then, verification is identified by email + code.
 - Password recovery, membership, any employment check. Verification proves email ownership
-  only: no session, no `bussco_auth` cookie, no role or membership change.
+  and changes no role or membership.
+- Since increment 3, a successful verification in the browser that registered (active account)
+  also signs it in: the response adds `user` and `csrf_token` and sets `bussco_auth`. Any other
+  browser gets `{ "email_verified": true }` only. See [sessions.md](sessions.md#automatic-login-after-email-verification).
 
 ## Endpoint contract
 
@@ -38,7 +41,8 @@ cooldown, or sent. Only a rate limit changes the answer (`429`).
 | Unparseable JSON | `400 { "error": "bad_request" }` (`BaseController`) |
 | `email`/`code` not a string, or containing NUL | treated as blank → `202` / `422`, never `500` |
 
-Responses never contain the code, its digest, a session cookie or a CSRF token.
+Responses never contain the code or its digest. Only the registering-browser sign-in above
+adds a CSRF token and the `bussco_auth` cookie.
 
 ## Business rules
 - **Code**: `format("%06d", SecureRandom.random_number(1_000_000))` (CSPRNG, uniform).
@@ -160,7 +164,9 @@ One code per user, so issuing a new one replaces the old; no separate table.
 
 ## Acceptance criteria (all covered by tests)
 - Registration enqueues exactly one email; a rejected registration none; still no session.
-- Right code → 200, verified, digest cleared, no `bussco_auth`; same code again → 422.
+- Right code → 200, verified, digest cleared; same code again → 422 and no new session.
+- Registering browser → signed in (`bussco_auth`, new CSRF token); other browser or disabled
+  account → verified, not signed in.
 - Wrong → 422 and attempt +1; five wrong then right → 422; 10 min + 1 s after issue → 422;
   a job delayed 5 minutes still gives the full 10 minutes from issue.
 - Resend inside 60 s → 202, no email; after → new email, old code 422, new code 200.
@@ -207,8 +213,9 @@ Accept: application/json
 3. The code arrives from `MAIL_FROM` within seconds.
 4. `PATCH http://localhost:3000/api/v1/auth/email_verification`
    `{"email":"<your inbox>","code":"000000"}` → `422 {"error":"invalid_code"}`.
-5. Same request with the real code → `200 {"email_verified": true}`. Send it again → `422`.
-   No `bussco_auth` cookie appears.
+5. Same request with the real code → `200` with `"email_verified": true`, `user` and a new
+   `csrf_token` (use it from now on), and a `bussco_auth` cookie. Send it again → `422`.
+   `GET http://localhost:3000/api/v1/auth/me` → `200`.
 6. Cooldown and replacement (use a second inbox, or a `+tag` address): register, then
    `POST http://localhost:3000/api/v1/auth/email_verification` `{"email":"<it>"}` straight away
    → `202`, no new email. After 60 s → `202`, new email. Old code → `422`, new code → `200`.

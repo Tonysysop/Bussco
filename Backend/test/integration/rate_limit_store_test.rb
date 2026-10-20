@@ -22,7 +22,8 @@ class RateLimitStoreTest < ActiveSupport::TestCase
 
     assert_equal 1, STORE.increment(key, 1, expires_in: 1.minute)
     assert_equal 2, other_store.increment(key, 1, expires_in: 1.minute)
-    assert_equal 1, SolidCache::Entry.count
+    # Count only this key: Solid Cache may add its own __solid_cache_entry_size_moving_average_estimates row.
+    assert_equal 1, SolidCache::Entry.pluck(:key).count { it.end_with?(key) }
   end
 
   test "a separate OS process sees and adds to the same counter" do

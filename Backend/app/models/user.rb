@@ -2,6 +2,11 @@ class User < ApplicationRecord
   # Password reset tokens belong to increment 4.
   has_secure_password reset_token: false
 
+  # dependent: :delete_all also makes sessions.delete_all delete rows rather than null user_id.
+  has_many :sessions, dependent: :delete_all
+  # Disabling revokes every login in the same transaction; each request also re-checks status.
+  before_update { sessions.delete_all if will_save_change_to_account_status?(to: "disabled") }
+
   # Unicode-aware trim: String#strip is ASCII-only, but the DB check's \s also matches e.g. EM SPACE.
   normalizes :full_name, with: ->(full_name) { full_name.gsub(/\A[[:space:]]+|[[:space:]]+\z/, "") }
   normalizes :email, with: ->(email) { email.strip.downcase }
