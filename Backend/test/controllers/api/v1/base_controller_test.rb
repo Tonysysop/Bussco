@@ -8,49 +8,46 @@ class Api::V1::ForgeryProbeController < Api::V1::BaseController
 end
 
 class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
-  SAME_ORIGIN = "http://www.example.com".freeze
   CSRF_ERROR = { "error" => "invalid_csrf_token" }.freeze
 
   test "unsafe request with same Origin and valid token succeeds" do
     with_probe_routes do
-      post "/api/v1/probe", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => fetch_token }
+      post "/api/v1/probe", headers: browser_headers
       assert_response :no_content
     end
   end
 
   test "missing token is rejected" do
     with_probe_routes do
-      fetch_token
-      post "/api/v1/probe", headers: { "Origin" => SAME_ORIGIN }
+      post "/api/v1/probe", headers: browser_headers.except("X-CSRF-Token")
       assert_csrf_rejected
     end
   end
 
   test "forged token is rejected" do
     with_probe_routes do
-      fetch_token
-      post "/api/v1/probe", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => SecureRandom.base64(64) }
+      post "/api/v1/probe", headers: browser_headers.merge("X-CSRF-Token" => SecureRandom.base64(64))
       assert_csrf_rejected
     end
   end
 
   test "missing Origin is rejected even with a valid token" do
     with_probe_routes do
-      post "/api/v1/probe", headers: { "X-CSRF-Token" => fetch_token }
+      post "/api/v1/probe", headers: browser_headers.except("Origin")
       assert_csrf_rejected
     end
   end
 
   test "null Origin is rejected" do
     with_probe_routes do
-      post "/api/v1/probe", headers: { "Origin" => "null", "X-CSRF-Token" => fetch_token }
+      post "/api/v1/probe", headers: browser_headers.merge("Origin" => "null")
       assert_csrf_rejected
     end
   end
 
   test "cross-site Origin is rejected even with a valid token" do
     with_probe_routes do
-      post "/api/v1/probe", headers: { "Origin" => "https://evil.example", "X-CSRF-Token" => fetch_token }
+      post "/api/v1/probe", headers: browser_headers.merge("Origin" => "https://evil.example")
       assert_csrf_rejected
     end
   end
@@ -64,16 +61,16 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
 
   test "rotating the session invalidates the previous token" do
     with_probe_routes do
-      old_token = fetch_token
-      post "/api/v1/probe/rotate", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => old_token }
+      old_headers = browser_headers
+      post "/api/v1/probe/rotate", headers: old_headers
       assert_response :success
       new_token = response.parsed_body["csrf_token"]
       assert_predicate new_token, :present?
 
-      post "/api/v1/probe", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => old_token }
+      post "/api/v1/probe", headers: old_headers
       assert_csrf_rejected
 
-      post "/api/v1/probe", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => new_token }
+      post "/api/v1/probe", headers: old_headers.merge("X-CSRF-Token" => new_token)
       assert_response :no_content
     end
   end
@@ -82,13 +79,13 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
   # because the CSRF secret lives in the cookie itself. Server-side revocation is increment 3's job.
   test "a replayed pre-rotation cookie still carries its own valid token" do
     with_probe_routes do
-      old_token = fetch_token
+      old_headers = browser_headers
       old_cookie = cookies["_bussco_session"]
-      post "/api/v1/probe/rotate", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => old_token }
+      post "/api/v1/probe/rotate", headers: old_headers
       assert_not_equal old_cookie, cookies["_bussco_session"]
 
       cookies["_bussco_session"] = old_cookie
-      post "/api/v1/probe", headers: { "Origin" => SAME_ORIGIN, "X-CSRF-Token" => old_token }
+      post "/api/v1/probe", headers: old_headers
       assert_response :no_content
     end
   end
@@ -109,11 +106,6 @@ class Api::V1::BaseControllerTest < ActionDispatch::IntegrationTest
       end
       yield
     end
-  end
-
-  def fetch_token
-    get "/api/v1/csrf"
-    response.parsed_body["csrf_token"]
   end
 
   def assert_csrf_rejected

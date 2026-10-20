@@ -13,3 +13,13 @@ module ActiveSupport
     # Add more helper methods to be used by all tests here...
   end
 end
+
+module ActionDispatch
+  class IntegrationTest
+    # Increment 0: unsafe requests need a same-origin Origin and a token from /api/v1/csrf.
+    def browser_headers
+      get "/api/v1/csrf"
+      { "Origin" => "http://www.example.com", "X-CSRF-Token" => response.parsed_body.fetch("csrf_token") }
+    end
+  end
+end

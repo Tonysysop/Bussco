@@ -9,6 +9,10 @@ Rails.application.routes.draw do
 
       # CSRF token for the browser app; creates the _bussco_session cookie.
       get "csrf", to: "csrf#show"
+
+      namespace :auth do
+        resources :registrations, only: :create
+      end
     end
   end
 end

@@ -1,6 +1,7 @@
 # Increment 1 — Registration and database constraints
 
-Status: **planned**
+Status: **implemented**. See "Implementation notes" at the end for where the
+build differs from or adds to this spec.
 
 ## Scope
 - `users` table with constraints, and a `User` model using `has_secure_password`.
@@ -17,7 +18,7 @@ Status: **planned**
 |-------|-----------------------|
 | `email_verified_at` | `null` |
 | `account_status` | `"active"` |
-| `membership_status` | `"not_started"` |
+| `membership_status` | `"not_started"` (the only value the DB accepts until the membership increment widens the check constraint in its own migration) |
 | `sap_id` | `null` |
 | Admin permissions | none (the `admin_roles` table doesn't exist until increment 5) |
 
@@ -26,7 +27,7 @@ approved. No request to this endpoint can set any of these values.
 
 ## Proposed endpoint contract
 
-`POST /api/v1/auth/registrations` — needs an allowed `Origin` and `X-CSRF-Token` (increment 0).
+`POST /api/v1/auth/registrations` — needs a same-origin `Origin` and `X-CSRF-Token` (increment 0).
 
 ```json
 { "user": { "full_name": "Ada Obi", "email": "Ada@Example.com ", "password": "…" } }
@@ -36,7 +37,9 @@ approved. No request to this endpoint can set any of these values.
 |------|----------|
 | Created | `201` `{ "user": { "id", "full_name", "email", "email_verified": false, "account_status": "active", "membership_status": "not_started" } }` |
 | Validation failure or duplicate email | `422` `{ "errors": { "<field>": ["…"] } }` |
-| `user` key missing / not an object | `400` (Rails' default for `params.expect`) |
+| Empty body, unparseable JSON, or `user` missing / not an object (array, string, number or `null` root) | `400` `{ "error": "bad_request" }` (`Api::V1::BaseController`) |
+| Body isn't valid UTF-8 | `400` from Rails itself: `{ "status": 400, "error": "Bad Request" }` with `Accept: application/json`, otherwise an empty HTML 400 |
+| `full_name`/`email`/`password` not a string, or containing a NUL character | `422`, treated as missing |
 | Missing/invalid CSRF token or disallowed origin | `403` (increment 0) |
 | Rate limited | `429` `{ "error": "rate_limited" }` + `Retry-After: 900` |
 
@@ -51,7 +54,10 @@ approved. No request to this endpoint can set any of these values.
   rejected, in every environment. Leave `action_on_unpermitted_parameters`
   unset (the default does nothing). Protected attributes are never assigned
   from params.
-- `full_name`: `normalizes` with `strip`. Must be 1–120 characters after trimming.
+- `full_name`: `normalizes` by trimming leading/trailing Unicode whitespace (`[[:space:]]`,
+  e.g. EM SPACE; Ruby's `strip` is ASCII-only but the DB check's `\s` is not). Must be
+  1–120 characters after trimming. Zero-width characters such as U+200B aren't
+  whitespace to Ruby or PostgreSQL and are kept.
 - `email`: `normalizes` with `strip.downcase`. Must match
   `URI::MailTo::EMAIL_REGEXP` (ASCII only, so Ruby `downcase` and PostgreSQL
   `lower` agree) and be ≤ 254 characters.
@@ -87,17 +93,24 @@ The model has matching validations, plus string-backed enums for
 - A duplicate normalized email gets `422` `{ "errors": { "email": ["has already been taken"] } }`.
   This **intentionally reveals whether an email is registered**. We accept that
   in exchange for a clear signup error, and rate limiting limits the damage.
+- **Email enumeration.** Anyone can learn whether an address has an account by
+  trying to register it. That is the price of a clear error. Limits: 10 attempts
+  per IP per 15 minutes, no account details are revealed (only "taken"), and
+  nothing about the existing account changes. Revisit if registration ever
+  needs to hide account existence (e.g. respond identically and email the owner,
+  once increment 2 sends mail).
 - Concurrent duplicates: both requests can pass the uniqueness validation, but
   the unique index lets only one insert succeed. The controller rescues
-  `ActiveRecord::RecordNotUnique` for the `email` index only, adds the same
-  `email` error, and returns the same `422`. Any other `RecordNotUnique` is
-  re-raised.
+  `ActiveRecord::RecordNotUnique`, reads the violated constraint's name from the
+  structured PostgreSQL error field (`PG_DIAG_CONSTRAINT_NAME`, not the message
+  text), and only for `index_users_on_email` adds the same `email` error and
+  returns the same `422`. Any other `RecordNotUnique` is re-raised.
 - Registration only ever does `User.create`. No upsert or
   `find_or_create_by`, so an existing account or password is never changed.
 
 ## Rate limiting
-- Rule: `rate_limit to: 10, within: 15.minutes, by: -> { request.remote_ip }, store: RATE_LIMIT_STORE, with: -> { render 429 }`, on `create` only.
-- Key: client IP. `remote_ip` is only correct if the proxy's address is trusted.
+- Rule: `rate_limit to: 10, within: 15.minutes, store: RATE_LIMIT_STORE, with: -> { render 429 }`, on `create` only.
+- Key: client IP — Rails' default `by:` is `-> { request.remote_ip }`, so it isn't repeated. `remote_ip` is only correct if the proxy's address is trusted.
   The proxy runs on a private network (trusted by default); otherwise set
   `config.action_dispatch.trusted_proxies`. Tradeoff: staff behind one office
   NAT share the budget, which is why the limit is 10 and not lower.
@@ -115,6 +128,23 @@ The model has matching validations, plus string-backed enums for
   `nil`, `rate_limit` lets the request through, and the error is logged.
   Registration grants no access and can't be used to log in or verify an email,
   so we choose availability over blocking signups.
+- **What "unavailable" covers (Solid Cache 1.0).** Only transient database errors
+  fail open: connection lost/not established, adapter or statement timeout,
+  deadlock, lock wait timeout, cancelled query. Any other database error (e.g. a
+  missing `solid_cache_entries` table) is raised and the request gets a 500,
+  so a broken deployment fails loudly instead of silently disabling the limit.
+- **Logging.** Solid Cache's default handler logs through
+  `ActiveSupport::Cache::Store.logger`, which is `nil` in this app, so a failure
+  would leave no trace. The registration store is built with an explicit
+  `error_handler` that logs `Rate limit store <method> failed (<ExceptionClass>);
+  request allowed` at ERROR via `Rails.logger` (exception class only; DB error
+  messages can include hosts). Failures are also sent to `Rails.error`.
+- **Security implications of fail-open.** While the database is degraded,
+  registration is unlimited: an attacker can create accounts in bulk and probe
+  for registered emails (enumeration) at full speed. Accounts created this way
+  are unverified, non-member and can't log in, and the same database outage
+  usually breaks registration too, since users live in the same database.
+  Watch for the ERROR line above; repeated occurrences mean the limit is off.
 
 ## Security requirements
 - CSRF + allowed `Origin` required (increment 0).
@@ -156,4 +186,51 @@ Request tests run with forgery protection enabled (see increment 0).
   registration.
 
 ## Dependencies
-- Increment 0: CSRF, allowed-origin checks, cookie middleware.
+- Increment 0: CSRF, same-origin checks, cookie middleware.
+- Gems: `bcrypt` (`has_secure_password`) and `solid_cache` (rate-limit store).
+
+## Implementation notes
+- **Files:** `db/migrate/*_create_users.rb`, `*_create_solid_cache_entries.rb`,
+  `app/models/user.rb`, `app/controllers/api/v1/auth/registrations_controller.rb`,
+  route `namespace :auth { resources :registrations, only: :create }`.
+- **`has_secure_password reset_token: false`.** Rails 8.1 otherwise generates a
+  `password_reset_token`; resets belong to increment 4.
+- **Non-string and NUL values.** `params.expect` permits any scalar. A number
+  or boolean would crash normalization, and a NUL character (`\u0000`, legal in
+  JSON) makes bcrypt raise on password assignment and PostgreSQL reject text.
+  The controller turns non-strings and strings containing NUL into `nil`, so
+  they fail validation with a `422`.
+- **Malformed bodies.** `BaseController` rescues `ParseError` (unparseable
+  JSON) and `ParameterMissing` (empty body, wrong root, missing `user`) as
+  `400 { "error": "bad_request" }`, regardless of `Accept`, with no exception
+  details. No change to the CSRF/Origin checks.
+- **Invalid UTF-8** is rejected by Rails while it builds the request log entry
+  (`ActionController::Instrumentation`), before `rescue_from` applies, so Rails'
+  exception handling answers and picks the format from `Accept`. Production
+  verified: `Accept: application/json` → JSON 400 without details; no `Accept`
+  or `*/*` → empty HTML 400. **Client contract:** the frontend sends
+  `Accept: application/json` on every API request. Not worth a global
+  `exceptions_app` for this one case.
+- **Solid Cache install.** Ran the official `bin/rails solid_cache:install`, then
+  adapted it to the primary database as its README allows: removed `database:`
+  from `config/cache.yml` (no `database`/`connects_to` means the primary
+  connection) and moved the generated `db/cache_schema.rb` table into a normal
+  migration. The installer also set production `config.cache_store =
+  :solid_cache_store`; kept (nothing else uses `Rails.cache` yet).
+- **Test store deviates from the table above:** test uses `:solid_cache_store`
+  (not MemoryStore) so rate limiting is exercised through PostgreSQL. Isolation:
+  transactional tests roll counters back; the non-transactional tests delete
+  `solid_cache_entries` in `teardown`. Development keeps MemoryStore.
+  Selected per environment with `config.x.rate_limit_store`.
+- **Tests:** `test/models/user_test.rb` (validations, normalization, passwords),
+  `test/models/user_constraints_test.rb` (constraints via raw SQL),
+  `test/controllers/api/v1/auth/registrations_controller_test.rb` (endpoint,
+  CSRF, malformed input, rate limit, fail-open, logs),
+  `test/integration/registration_race_test.rb`,
+  `test/integration/rate_limit_store_test.rb` (primary connection, shared
+  counters across store instances and a separate OS process).
+- **Race tests are labelled.** *Simulated* (deterministic): another connection
+  commits the same email between validation and insert, exercising the
+  controller's handling every run. *Genuine* (non-deterministic interleaving):
+  four threads on independent connections create the same email; asserts
+  exactly one row and that every loser failed cleanly, whatever the order.

@@ -98,6 +98,8 @@ end
   verified, so **no GET endpoint may change state** (create, verify, log in,
   log out, send mail, reset).
 - No auth controller calls `skip_forgery_protection`.
+- Malformed request bodies get `400 { "error": "bad_request" }` from
+  `BaseController` (added in increment 1; see `registration.md`).
 
 ### 3. Anonymous / pre-login requests
 `GET /api/v1/csrf` works without login. On first call it creates the

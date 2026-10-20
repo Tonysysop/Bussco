@@ -1,14 +1,14 @@
 # Authentication — index
 
-Status: increment 0 (browser foundations) is **implemented**; increments 1–5 are
-**planned**. No authentication exists yet: no users, logins or auth endpoints.
+Status: increments 0 (browser foundations) and 1 (registration) are **implemented**;
+increments 2–5 are **planned**. Users can register, but nobody can log in yet.
 
 Read only the spec for the increment you are implementing.
 
 | # | Increment | Spec | Depends on |
 |---|-----------|------|------------|
 | 0 | Browser foundations: cookies, CSRF, origin checks, session rules (**implemented**) | [browser-foundations.md](browser-foundations.md) | Scaffold |
-| 1 | Registration + DB constraints | [registration.md](registration.md) | 0 |
+| 1 | Registration + DB constraints (**implemented**) | [registration.md](registration.md) | 0 |
 | 2 | Email verification | [email-verification.md](email-verification.md) | 0, 1 |
 | 3 | Member sessions (login, logout, current user) | [sessions.md](sessions.md) | 0, 1, 2 |
 | 4 | Password recovery + password change | [password-recovery.md](password-recovery.md) | 0, 1, 3 |
