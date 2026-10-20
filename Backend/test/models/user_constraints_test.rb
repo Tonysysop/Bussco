@@ -52,12 +52,6 @@ class UserConstraintsTest < ActiveSupport::TestCase
     assert_rejected(ActiveRecord::CheckViolation) { user.update_columns(account_status: "superuser") }
   end
 
-  test "verification attempts stay between 0 and 5" do
-    user = User.create!(full_name: "Ada Obi", email: "ada@example.com", password: "correct horse battery")
-    assert_rejected(ActiveRecord::CheckViolation) { user.update_columns(email_verification_attempts: -1) }
-    assert_rejected(ActiveRecord::CheckViolation) { user.update_columns(email_verification_attempts: 6) }
-  end
-
   private
 
   def raw_insert(row)

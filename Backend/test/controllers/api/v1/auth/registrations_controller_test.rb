@@ -20,16 +20,6 @@ class Api::V1::Auth::RegistrationsControllerTest < ActionDispatch::IntegrationTe
                    "account_status" => "active", "membership_status" => "not_started" }, body.except("id"))
   end
 
-  test "registration enqueues exactly one verification email" do
-    assert_enqueued_emails(1) { register }
-    assert_response :created
-  end
-
-  test "a rejected registration sends no email" do
-    assert_no_enqueued_emails { register(password: "short") }
-    assert_response :unprocessable_content
-  end
-
   test "registration does not log the user in" do
     register
     assert_response :created
@@ -199,5 +189,17 @@ class Api::V1::Auth::RegistrationsControllerTest < ActionDispatch::IntegrationTe
     end
     assert_no_match(/password/i, response.body)
     assert_match(/\[FILTERED\]/, log)
+  end
+
+  private
+
+  def capture_log
+    io = StringIO.new
+    sink = ActiveSupport::Logger.new(io)
+    Rails.logger.broadcast_to(sink)
+    yield
+    io.string
+  ensure
+    Rails.logger.stop_broadcasting_to(sink)
   end
 end

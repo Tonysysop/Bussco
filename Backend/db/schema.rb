@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_20_074107) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -35,17 +35,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_20_120000) do
     t.string "sap_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "email_verification_code_digest"
-    t.datetime "email_verification_code_issued_at"
-    t.datetime "email_verification_requested_at"
-    t.integer "email_verification_generation", default: 0, null: false
-    t.integer "email_verification_attempts", default: 0, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["sap_id"], name: "index_users_on_sap_id", unique: true
     t.check_constraint "account_status::text = ANY (ARRAY['active'::character varying, 'disabled'::character varying]::text[])", name: "users_account_status_allowed"
     t.check_constraint "char_length(full_name::text) >= 1 AND char_length(full_name::text) <= 120 AND full_name::text !~ '^\\s|\\s$'::text", name: "users_full_name_trimmed_length"
     t.check_constraint "email::text = lower(email::text) AND char_length(email::text) <= 254 AND email::text ~ '^[^@\\s]+@[^@\\s]+$'::text", name: "users_email_normalized"
-    t.check_constraint "email_verification_attempts >= 0 AND email_verification_attempts <= 5", name: "users_email_verification_attempts_range"
     t.check_constraint "membership_status::text = 'not_started'::text", name: "users_membership_status_allowed"
     t.check_constraint "sap_id IS NULL OR sap_id::text !~ '^\\s*$'::text", name: "users_sap_id_not_blank"
   end

@@ -235,6 +235,3 @@ Request tests run with forgery protection enabled (see increment 0).
   controller's handling every run. *Genuine* (non-deterministic interleaving):
   four threads on independent connections create the same email; asserts
   exactly one row and that every loser failed cleanly, whatever the order.
-- **Increment 2 moved** `RATE_LIMIT_STORE`, `rate_limited` and the NUL/non-string sanitiser
-  (`string_param`) up to `Api::V1::BaseController` so email verification shares them. No
-  behaviour change; `capture_log` moved to `test/test_helper.rb`.

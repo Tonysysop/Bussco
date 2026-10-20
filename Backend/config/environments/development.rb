@@ -29,8 +29,8 @@ Rails.application.configure do
   # Rate-limit counters (docs/auth/registration.md): per process, reset on restart.
   config.x.rate_limit_store = :memory_store
 
-  # Surface delivery failures (e.g. Resend rejecting the key or sender) in the job log.
-  config.action_mailer.raise_delivery_errors = true
+  # Don't care if the mailer can't send.
+  config.action_mailer.raise_delivery_errors = false
 
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false

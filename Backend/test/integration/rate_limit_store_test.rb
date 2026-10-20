@@ -6,7 +6,7 @@ require "open3"
 class RateLimitStoreTest < ActiveSupport::TestCase
   self.use_transactional_tests = false
 
-  STORE = Api::V1::BaseController::RATE_LIMIT_STORE
+  STORE = Api::V1::Auth::RegistrationsController::RATE_LIMIT_STORE
 
   teardown { SolidCache::Entry.delete_all }
 
