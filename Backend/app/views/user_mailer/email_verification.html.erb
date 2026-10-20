@@ -1,0 +1,93 @@
+<% content_for :preheader, "Your BUSSCO verification code is #{@code}. Use it to verify your email address." %>
+                
+                <!-- Security / Badge Indicator -->
+                <tr>
+                  <td style="padding-bottom: 20px;">
+                    <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td bgcolor="#FFF1F2" style="background-color: #FFF1F2; border: 1px solid #FFE4E6; border-radius: 20px; padding: 4px 12px;">
+                          <span style="font-size: 11px; font-weight: 600; color: #9E1B22; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Email Verification
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Heading -->
+                <tr>
+                  <td style="padding-bottom: 24px;">
+                    <h1 style="font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1.3; margin: 0; letter-spacing: -0.3px;">
+                      Verify your email address
+                    </h1>
+                  </td>
+                </tr>
+
+                <!-- Greeting & Body Text -->
+                <tr>
+                  <td style="padding-bottom: 14px;">
+                    <p style="font-size: 15px; font-weight: 600; color: #1e293b; line-height: 1.6; margin: 0;">
+                      Hello <%= @user.full_name %>,
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 32px;">
+                    <p style="font-size: 15px; font-weight: 400; color: #475569; line-height: 1.65; margin: 0;">
+                      Welcome to BUSSCO! To complete your account registration, please verify your email address using the code below.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- OTP Display Container -->
+                <tr>
+                  <td align="center" style="padding-bottom: 28px;">
+                    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" bgcolor="#FDF2F2" style="background-color: #FDF2F2; border: 1px solid #FBCFE8; border-color: rgba(158, 27, 34, 0.16); border-radius: 12px; padding: 24px 20px;">
+                          
+                          <!-- Label inside OTP box -->
+                          <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #881337; margin-bottom: 8px;">
+                            One-Time Passcode
+                          </div>
+
+                          <!-- The 6-digit OTP (selectable, copyable text) -->
+                          <div class="code-display" style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Monaco, 'Courier New', monospace; font-size: 38px; font-weight: 700; color: #9E1B22; letter-spacing: 8px; line-height: 1.2; text-indent: 8px; user-select: all; -webkit-user-select: all; margin: 0;">
+                            <%= @code %>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Expiration Information & Security Note -->
+                <tr>
+                  <td style="padding-bottom: 24px;">
+                    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#F8FAFC" style="background-color: #F8FAFC; border-radius: 8px; padding: 14px 16px;">
+                      <tr>
+                        <td valign="top" width="20" style="padding-right: 10px; padding-top: 1px;">
+                          <span style="display: inline-block; width: 6px; height: 6px; background-color: #9E1B22; border-radius: 50%;"></span>
+                        </td>
+                        <td valign="top">
+                          <p style="font-size: 13.5px; color: #334155; line-height: 1.5; margin: 0;">
+                            <strong style="font-weight: 600; color: #0f172a;">This verification code expires in <%= User::EMAIL_CODE_TTL.in_minutes.to_i %> minutes.</strong>
+                          </p>
+                          <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 3px 0 0 0;">
+                            For your security, do not share this code with anyone.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Secondary Advisory Message -->
+                <tr>
+                  <td style="padding-bottom: 4px;">
+                    <p style="font-size: 13.5px; color: #64748b; line-height: 1.6; margin: 0;">
+                      If you didn’t create a BUSSCO account, you can safely ignore this email.
+                    </p>
+                  </td>
+                </tr>

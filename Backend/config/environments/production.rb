@@ -46,8 +46,12 @@ Rails.application.configure do
   # Rate-limit counters, shared across processes and hosts on the primary DB (docs/auth/registration.md).
   config.x.rate_limit_store = :solid_cache_store
 
-  # Replace the default in-process and non-durable queuing backend for Active Job.
-  # config.active_job.queue_adapter = :resque
+  # Rate-limit counters, shared across processes and hosts on the primary DB (docs/auth/registration.md).
+  config.x.rate_limit_store = :solid_cache_store
+
+  # shortcut: Active Job uses Rails' in-process :async adapter, so mail jobs pending at a restart
+  # are lost (the user requests another code). Move to a durable backend (e.g. Solid Queue)
+  # before production deployment; see docs/auth/email-verification.md.
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
@@ -56,14 +60,9 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "example.com" }
 
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
+  # Resend SMTP (settings in config/application.rb). Boot fails without the key or sender.
+  config.action_mailer.delivery_method = :smtp
+  %w[RESEND_API_KEY MAIL_FROM].each { |name| ENV.fetch(name) }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

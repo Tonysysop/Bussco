@@ -4,6 +4,13 @@ module Api
       include ActionController::Cookies
       include ActionController::RequestForgeryProtection
 
+      # error_handler is Solid Cache's hook for transient DB errors, after which the limiter fails open.
+      # Its default logs via Cache::Store.logger, which is nil here, so log explicitly (class only).
+      RATE_LIMIT_STORE = ActiveSupport::Cache.lookup_store(Rails.configuration.x.rate_limit_store,
+        error_handler: ->(method:, exception:, **) {
+          Rails.logger.error("Rate limit store #{method} failed (#{exception.class}); request allowed")
+        })
+
       # API controllers don't inherit config.action_controller defaults, so set the origin check here.
       self.forgery_protection_origin_check = true
       protect_from_forgery with: :exception
@@ -30,6 +37,17 @@ module Api
       def rotate_browser_session
         reset_session
         form_authenticity_token
+      end
+
+      # Non-strings and strings with NUL (which bcrypt and PostgreSQL reject with an exception)
+      # become nil, so they fail validation or lookup instead of erroring.
+      def string_param(value)
+        value if value.is_a?(String) && !value.include?("\0")
+      end
+
+      def rate_limited(retry_after = 15.minutes)
+        response.set_header("Retry-After", retry_after.to_i.to_s)
+        render json: { error: "rate_limited" }, status: :too_many_requests
       end
     end
   end

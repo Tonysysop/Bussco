@@ -38,8 +38,8 @@ Rails.application.configure do
   # Set localhost to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 
-  # Write mail to tmp/mails/ instead of sending it, so no real email leaves the machine.
-  config.action_mailer.delivery_method = :file
+  # Write mail to tmp/mails/ unless RESEND_API_KEY is exported; then send real mail via Resend.
+  config.action_mailer.delivery_method = ENV["RESEND_API_KEY"].present? ? :smtp : :file
   config.action_mailer.file_settings = { location: Rails.root.join("tmp/mails") }
 
   # Print deprecation notices to the Rails logger.

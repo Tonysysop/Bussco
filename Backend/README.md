@@ -52,18 +52,24 @@ set -a; . ./.env; set +a     # export everything in .env for this shell
 | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` | Unix socket, port 5432, OS user, no password |
 | `RAILS_MAX_THREADS` | `5` |
 | `DATABASE_URL` | Production only |
+| `RESEND_API_KEY` | Production: **required** (boot fails without it). Development: unset writes mail to `tmp/mails/`; set it to send real mail through Resend SMTP. Never set in test |
+| `MAIL_FROM` | `BUSSCO <no-reply@localhost>`; production **required**. A sender on your Resend-verified domain, e.g. `BUSSCO <verify@your-domain>` |
 | `APP_HOSTS` | Production only, **required** (boot fails without it): comma-separated public hostnames for host authorization |
 
 Production also requires HTTPS at the reverse proxy, with the browser's `Host`
 preserved; see [docs/auth/browser-foundations.md](docs/auth/browser-foundations.md) §4.
+It also requires a durable Active Job backend such as Solid Queue. Today's `:async` adapter
+loses pending verification emails on restart; see
+[docs/auth/email-verification.md](docs/auth/email-verification.md) "Background jobs". Before
+rollout, review that spec's per-IP limit for staff behind a shared corporate IP ("Rate limits").
 
 With the role above, leave the `DATABASE_*` vars unset. Set them only for a
 password-protected role or a TCP connection.
 
 Databases: `bussco_development` and `bussco_test` (separate; the test DB is rebuilt by the test suite).
 
-Mail: development writes each email to `tmp/mails/` (`:file` delivery); test
-uses `:test` delivery. No real emails are sent from either.
+Mail: development writes each email to `tmp/mails/` (`:file` delivery) unless
+`RESEND_API_KEY` is set; test uses `:test` delivery and never needs Resend credentials.
 
 ## Setup and run
 

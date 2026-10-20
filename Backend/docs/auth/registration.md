@@ -8,7 +8,8 @@ build differs from or adds to this spec.
 - `POST /api/v1/auth/registrations`, with rate limiting.
 
 ## Exclusions
-- Sending or verifying email (increment 2). Registration sends no mail.
+- Verifying email (increment 2). Since increment 2, a successful registration also sends the
+  first verification code; see [email-verification.md](email-verification.md).
 - Creating an authenticated session. Registration never logs the user in (increment 3).
 - Membership review, SAP ID linking, admin provisioning.
 
