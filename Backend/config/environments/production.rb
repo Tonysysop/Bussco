@@ -46,9 +46,6 @@ Rails.application.configure do
   # Rate-limit counters, shared across processes and hosts on the primary DB (docs/auth/registration.md).
   config.x.rate_limit_store = :solid_cache_store
 
-  # Rate-limit counters, shared across processes and hosts on the primary DB (docs/auth/registration.md).
-  config.x.rate_limit_store = :solid_cache_store
-
   # shortcut: Active Job uses Rails' in-process :async adapter, so mail jobs pending at a restart
   # are lost (the user requests another code). Move to a durable backend (e.g. Solid Queue)
   # before production deployment; see docs/auth/email-verification.md.
