@@ -12,6 +12,13 @@ module Api
         render json: { error: "invalid_csrf_token" }, status: :forbidden
       end
 
+      # Unparseable JSON and a missing/non-object root key (params.expect) get one JSON 400 with no
+      # details, whatever the Accept header. Invalid UTF-8 fails earlier, in Rails' instrumentation,
+      # so it gets Rails' own 400 (JSON when the client sends Accept: application/json).
+      rescue_from ActionDispatch::Http::Parameters::ParseError, ActionController::ParameterMissing do
+        render json: { error: "bad_request" }, status: :bad_request
+      end
+
       private
 
       # Rails accepts a missing Origin; browsers send one on every unsafe fetch, so require it.

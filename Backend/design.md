@@ -9,7 +9,8 @@ cooperative formed by BUA staff. This Rails API serves the BUSSCO React app.
 |------|--------|
 | Scaffold, `GET /up`, `GET /api/v1/health/ready` | Implemented |
 | Browser foundations (auth increment 0): session cookie, CSRF, Origin checks, `GET /api/v1/csrf` | Implemented — request-integrity controls only, not authentication |
-| Authentication (increments 1–5) | Planned — see [docs/auth/README.md](docs/auth/README.md) |
+| Registration (auth increment 1): `users` table, `POST /api/v1/auth/registrations` | Implemented — creates an unverified, non-member account; no login |
+| Authentication (increments 2–5) | Planned — see [docs/auth/README.md](docs/auth/README.md) |
 | Membership review, savings, loans | Planned — rules below, no design yet |
 
 ## Architecture
@@ -43,7 +44,7 @@ Production must serve HTTPS through a proxy that preserves `Host`; same section.
 
 No CORS middleware is configured, by design.
 
-## Identity model (planned)
+## Identity model (`users` table implemented; dimensions beyond the initial state planned)
 
 One identity store (`users`) for members, applicants and admins. These are
 **independent dimensions**, never collapsed into a single "role" column:

@@ -10,10 +10,14 @@ Implemented endpoints:
 | `GET /up` | Liveness: 200 if the app boots |
 | `GET /api/v1/health/ready` | Readiness: 200 `{"status":"ok"}`, or 503 `{"status":"unavailable"}` when the DB is unreachable |
 | `GET /api/v1/csrf` | CSRF token for the browser app; sets the `_bussco_session` cookie |
+| `POST /api/v1/auth/registrations` | Public registration: creates an unverified, non-member account; no login ([spec](docs/auth/registration.md)) |
 
 Unsafe requests (POST/PUT/PATCH/DELETE) need a same-origin `Origin` header and an
 `X-CSRF-Token` header; see [docs/auth/browser-foundations.md](docs/auth/browser-foundations.md).
-Authentication is **planned, not implemented**.
+Registration exists; logging in does not yet (auth increments 2–5 are planned).
+
+Rate-limit counters: in-process memory in development; Solid Cache on the primary
+PostgreSQL database in test and production (`solid_cache_entries`, created by a normal migration).
 
 Dev caveat: in development, Rails' pending-migration check touches the DB on
 every request, so with the DB down both endpoints return 500 there. In
