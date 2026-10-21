@@ -31,7 +31,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { ApiError, apiPost } from "@/lib/api"
+import { ApiError, apiErrorMessage, apiPost } from "@/lib/api"
 import {
   passwordRules,
   signupSchema,
@@ -52,13 +52,7 @@ function errorState(error: Error): {
   fields: FieldErrors
   form: string | null
 } {
-  if (!(error instanceof ApiError)) {
-    return {
-      fields: {},
-      form: "We couldn't reach the server. Check your connection and try again.",
-    }
-  }
-  if (error.status === 422) {
+  if (error instanceof ApiError && error.status === 422) {
     const fields: FieldErrors = {}
     const other: string[] = []
     const errors =
@@ -75,19 +69,7 @@ function errorState(error: Error): {
     }
     return { fields, form: other.length ? other.join(" ") : null }
   }
-  if (error.status === 403)
-    return { fields: {}, form: "Your session expired. Please try again." }
-  if (error.status === 429) {
-    const minutes = Math.ceil((error.retryAfter ?? 900) / 60)
-    return {
-      fields: {},
-      form: `Too many attempts. Try again in ${minutes} minutes.`,
-    }
-  }
-  return {
-    fields: {},
-    form: "Something went wrong on our side. Please try again.",
-  }
+  return { fields: {}, form: apiErrorMessage(error) }
 }
 
 export function SignupPage() {
@@ -107,7 +89,9 @@ export function SignupPage() {
         user: { email: string }
       }>,
     onSuccess: ({ user }) =>
-      navigate("/verify-email", { state: { email: user.email } }),
+      navigate("/verify-email", {
+        state: { email: user.email, codeSentAt: Date.now() },
+      }),
     onError: (error) => setErrors(errorState(error).fields),
   })
 

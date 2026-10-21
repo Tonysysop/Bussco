@@ -31,28 +31,54 @@ async function request(path: string, init: RequestInit = {}) {
     credentials: "include",
     headers: { Accept: "application/json", ...init.headers },
   })
-  const body = response.headers
-    .get("Content-Type")
-    ?.includes("application/json")
-    ? await response.json()
-    : null
+  // Rails' `head :accepted` sends Content-Type: application/json with an empty body.
+  const text = await response.text()
+  const body =
+    text && response.headers.get("Content-Type")?.includes("application/json")
+      ? JSON.parse(text)
+      : null
   if (!response.ok) throw new ApiError(response, body)
   return body
 }
 
-export async function apiPost(path: string, data: unknown) {
+export const apiGet = (path: string) => request(path)
+
+async function send(method: string, path: string, data: unknown) {
   try {
-    return await request(path, {
-      method: "POST",
+    const body = await request(path, {
+      method,
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": await fetchCsrfToken(),
       },
       body: JSON.stringify(data),
     })
+    // Sign-in resets the Rails session, killing the old token; Rails returns its replacement.
+    const rotated = (body as { csrf_token?: unknown } | null)?.csrf_token
+    if (typeof rotated === "string") csrfToken = Promise.resolve(rotated)
+    return body
   } catch (error) {
     // The Rails session (and with it the token) may have changed; fetch a fresh one next time.
     if (error instanceof ApiError && error.status === 403) csrfToken = null
     throw error
   }
+}
+
+export const apiPost = (path: string, data: unknown) => send("POST", path, data)
+export const apiPatch = (path: string, data: unknown) =>
+  send("PATCH", path, data)
+
+// Message for any failure a form can't attribute to a field.
+export function apiErrorMessage(error: Error) {
+  // fetch rejects with a TypeError only when no response arrived.
+  if (error instanceof TypeError)
+    return "We couldn't reach the server. Check your connection and try again."
+  if (!(error instanceof ApiError))
+    return "Something went wrong on our side. Please try again."
+  if (error.status === 403) return "Your session expired. Please try again."
+  if (error.status === 429) {
+    const minutes = Math.ceil((error.retryAfter ?? 900) / 60)
+    return `Too many attempts. Try again in ${minutes} minutes.`
+  }
+  return "Something went wrong on our side. Please try again."
 }
