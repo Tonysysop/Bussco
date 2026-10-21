@@ -46,9 +46,16 @@ Rails.application.configure do
   # Rate-limit counters, shared across processes and hosts on the primary DB (docs/auth/registration.md).
   config.x.rate_limit_store = :solid_cache_store
 
-  # shortcut: Active Job uses Rails' in-process :async adapter, so mail jobs pending at a restart
-  # are lost (the user requests another code). Move to a durable backend (e.g. Solid Queue)
-  # before production deployment; see docs/auth/email-verification.md.
+  # Passport photos on local disk: storage/ must be a persistent volume (docs/membership/application.md).
+  config.active_storage.service = :local
+
+  # No default: submissions are refused until an approved declaration version is configured.
+  config.x.membership_declaration_version = ENV["MEMBERSHIP_DECLARATION_VERSION"]
+
+  # shortcut: Active Job uses Rails' in-process :async adapter, so jobs pending at a restart are lost:
+  # verification emails (the user requests another code) and purges of replaced passport photos (the
+  # old file stays in storage/, unreachable). Move to a durable backend (e.g. Solid Queue) before
+  # production deployment; see docs/auth/email-verification.md and docs/membership/application.md.
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.

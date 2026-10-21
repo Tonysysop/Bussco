@@ -16,6 +16,15 @@ Rails.application.routes.draw do
         resource :session, only: [ :create, :destroy ]
         get "me", to: "sessions#show"
       end
+
+      namespace :membership do
+        resource :application, only: [ :show, :create ] do
+          patch "stages/:stage", action: :update_stage, as: :stage
+          get :passport_photo, action: :passport_photo
+          put :passport_photo, action: :update_passport_photo
+          post :submission, action: :submit
+        end
+      end
     end
   end
 end

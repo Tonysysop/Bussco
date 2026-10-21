@@ -1,9 +1,11 @@
 class User < ApplicationRecord
-  # Password reset tokens belong to increment 4.
+  # Password reset tokens belong to the password recovery increment (docs/auth/password-recovery.md).
   has_secure_password reset_token: false
 
   # dependent: :delete_all also makes sessions.delete_all delete rows rather than null user_id.
   has_many :sessions, dependent: :delete_all
+  # destroy (not the FK cascade) so Active Storage also purges the passport photo.
+  has_one :membership_application, dependent: :destroy
   # Disabling revokes every login in the same transaction; each request also re-checks status.
   before_update { sessions.delete_all if will_save_change_to_account_status?(to: "disabled") }
 
@@ -12,7 +14,8 @@ class User < ApplicationRecord
   normalizes :email, with: ->(email) { email.strip.downcase }
 
   enum :account_status, { active: "active", disabled: "disabled" }
-  enum :membership_status, { not_started: "not_started" }
+  # Set only by server code: awaiting_approval on application submission; approval is a later increment.
+  enum :membership_status, { not_started: "not_started", awaiting_approval: "awaiting_approval" }
 
   validates :full_name, presence: true, length: { maximum: 120 }
   validates :email, presence: true, length: { maximum: 254 },

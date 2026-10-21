@@ -25,6 +25,11 @@ Rails.application.configure do
   # Rate-limit counters: same DB-backed store as production, so tests exercise it.
   config.x.rate_limit_store = :solid_cache_store
 
+  config.active_storage.service = :test
+
+  # Membership declaration accepted on submission; draft-v1 is unapproved, allowed outside production only.
+  config.x.membership_declaration_version = "draft-v1"
+
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 

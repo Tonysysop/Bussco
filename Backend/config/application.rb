@@ -5,7 +5,7 @@ require "rails"
 require "active_model/railtie"
 require "active_job/railtie"
 require "active_record/railtie"
-# require "active_storage/engine"
+require "active_storage/engine"
 require "action_controller/railtie"
 require "action_mailer/railtie"
 # require "action_mailbox/engine"
@@ -33,7 +33,9 @@ module Bussco
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    # BUSSCO operates in Nigeria: Date.current and "today"/"next month" rules follow Lagos (UTC+1, no DST).
+    # Timestamps are still stored in UTC.
+    config.time_zone = "Africa/Lagos"
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Only loads a smaller set of middleware suitable for API only apps.
@@ -55,5 +57,9 @@ module Bussco
     config.action_mailer.default_options = { from: ENV.fetch("MAIL_FROM", "BUSSCO <no-reply@localhost>") }
     # Action Mailer logs whole messages, verification codes included, at debug level.
     config.action_mailer.logger = nil
+
+    # Passport photos are private (docs/membership/application.md): Active Storage's own routes
+    # (public signed blob URLs, anonymous direct uploads) are off; owners fetch them via the API.
+    config.active_storage.draw_routes = false
   end
 end
