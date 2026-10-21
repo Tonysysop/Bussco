@@ -6,3 +6,5 @@ graphify-out/
 CLAUDE.local.md
 
 .DS_Store
+# Local Stitch design references
+/design-reference/

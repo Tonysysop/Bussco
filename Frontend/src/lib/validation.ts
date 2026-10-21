@@ -46,3 +46,8 @@ export const signupSchema = z.object({
 
 export type SignupInput = z.input<typeof signupSchema>
 export type SignupFields = keyof SignupInput
+
+export const verifyEmailSchema = z.object({
+  email: signupSchema.shape.email,
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
+})

@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen, waitFor } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { createMemoryRouter, RouterProvider } from "react-router"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
+
+import { callsTo, csrfHeader, json, stubFetch } from "@/test/fetch"
+import { renderRoute } from "@/test/render"
 
 const TOKEN = "csrf-token-1"
 const FILLED = {
@@ -11,53 +12,8 @@ const FILLED = {
   password: "correct horse battery",
 }
 
-type Reply =
-  { status: number; body?: unknown; headers?: Record<string, string> } | Error
-
-function json({ status, body, headers }: Exclude<Reply, Error>) {
-  return new Response(body === undefined ? null : JSON.stringify(body), {
-    status,
-    headers:
-      body === undefined
-        ? headers
-        : { "Content-Type": "application/json", ...headers },
-  })
-}
-
-// Answers /api/v1/csrf with a fresh token each time and registration requests from `replies`, in order.
-function stubFetch(...replies: Reply[]) {
-  let tokens = 0
-  const fetchMock = vi.fn<
-    (path: string, init?: RequestInit) => Promise<Response>
-  >(async (path) => {
-    if (path === "/api/v1/csrf")
-      return json({
-        status: 200,
-        body: { csrf_token: `csrf-token-${++tokens}` },
-      })
-    const reply = replies.shift()!
-    if (reply instanceof Error) throw reply
-    return json(reply)
-  })
-  vi.stubGlobal("fetch", fetchMock)
-  return fetchMock
-}
-
 const registrationCalls = (fetchMock: ReturnType<typeof stubFetch>) =>
-  fetchMock.mock.calls.filter(([path]) => path === "/api/v1/auth/registrations")
-
-async function renderSignup() {
-  // Fresh modules so the in-memory CSRF token from another test isn't reused.
-  vi.resetModules()
-  const { routes } = await import("@/routes")
-  const router = createMemoryRouter(routes, { initialEntries: ["/signup"] })
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  )
-  return router
-}
+  callsTo(fetchMock, "/api/v1/auth/registrations")
 
 async function fillAndSubmit(values: Partial<typeof FILLED> = {}) {
   const user = userEvent.setup()
@@ -85,7 +41,7 @@ describe("SignupPage", () => {
         ? json({ status: 200, body: { csrf_token: TOKEN } })
         : new Promise<Response>((resolve) => (finish = resolve))
     )
-    const router = await renderSignup()
+    const router = await renderRoute("/signup")
 
     await fillAndSubmit()
 
@@ -116,10 +72,13 @@ describe("SignupPage", () => {
     finish(json({ status: 201, body: { user: { email: "ada@example.com" } } }))
 
     expect(
-      await screen.findByRole("heading", { name: "Account created" })
+      await screen.findByRole("heading", { name: "Verify your email" })
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/verify-email")
-    expect(router.state.location.state).toEqual({ email: "ada@example.com" })
+    expect(router.state.location.state).toEqual({
+      email: "ada@example.com",
+      codeSentAt: expect.any(Number),
+    })
     expect(JSON.stringify(router.state.location.state)).not.toContain(
       FILLED.password
     )
@@ -127,7 +86,7 @@ describe("SignupPage", () => {
 
   it("shows Zod errors under each field and sends nothing", async () => {
     const fetchMock = stubFetch()
-    await renderSignup()
+    await renderRoute("/signup")
 
     await fillAndSubmit({ full_name: "", email: "nope", password: "short" })
 
@@ -145,7 +104,7 @@ describe("SignupPage", () => {
 
   it("re-checks an errored field as the user types and clears it once valid", async () => {
     stubFetch()
-    await renderSignup()
+    await renderRoute("/signup")
 
     const user = await fillAndSubmit({ full_name: "", email: "nope" })
     const email = screen.getByLabelText(/Work Email Address/)
@@ -167,7 +126,7 @@ describe("SignupPage", () => {
       status: 422,
       body: { errors: { email: ["has already been taken"] } },
     })
-    await renderSignup()
+    await renderRoute("/signup")
 
     const user = await fillAndSubmit()
     await screen.findByText("Email has already been taken")
@@ -180,7 +139,7 @@ describe("SignupPage", () => {
 
   it("updates the password indicator with the same rules", async () => {
     stubFetch()
-    await renderSignup()
+    await renderRoute("/signup")
     const user = userEvent.setup()
     const chip = () =>
       screen.getByText("At least 12 characters").closest("[data-met]")!
@@ -218,7 +177,7 @@ describe("SignupPage", () => {
         },
       },
     })
-    await renderSignup()
+    await renderRoute("/signup")
 
     await fillAndSubmit()
 
@@ -244,7 +203,7 @@ describe("SignupPage", () => {
       status: 422,
       body: { errors: { email: ["has already been taken"] } },
     })
-    await renderSignup()
+    await renderRoute("/signup")
 
     await fillAndSubmit()
 
@@ -263,7 +222,7 @@ describe("SignupPage", () => {
       { status: 403, body: { error: "invalid_csrf_token" } },
       { status: 201, body: { user: { email: "ada@example.com" } } }
     )
-    await renderSignup()
+    await renderRoute("/signup")
 
     const user = await fillAndSubmit()
     expect(
@@ -272,11 +231,9 @@ describe("SignupPage", () => {
 
     await user.click(submitButton())
     expect(
-      await screen.findByRole("heading", { name: "Account created" })
+      await screen.findByRole("heading", { name: "Verify your email" })
     ).toBeInTheDocument()
-    const tokens = registrationCalls(fetchMock).map(
-      ([, init]) => (init!.headers as Record<string, string>)["X-CSRF-Token"]
-    )
+    const tokens = registrationCalls(fetchMock).map(csrfHeader)
     expect(tokens).toEqual(["csrf-token-1", "csrf-token-2"])
   })
 
@@ -298,7 +255,7 @@ describe("SignupPage", () => {
     "shows an alert for API failures (%#) and lets the user retry",
     async (reply, message) => {
       stubFetch(reply)
-      await renderSignup()
+      await renderRoute("/signup")
 
       await fillAndSubmit()
 
@@ -312,7 +269,7 @@ describe("SignupPage", () => {
 
   it("has no links to pages that don't exist", async () => {
     stubFetch()
-    await renderSignup()
+    await renderRoute("/signup")
     expect(screen.getByText(/Terms of Service/)).toBeInTheDocument()
     expect(document.querySelector("a")).toBeNull()
   })
