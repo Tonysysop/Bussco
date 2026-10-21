@@ -85,7 +85,45 @@ class UserTest < ActiveSupport::TestCase
     assert_not user.authenticate(password.strip)
   end
 
-  test "password reset tokens are not part of this increment" do
+  test "Rails' built-in password reset token is replaced by generates_token_for :password_reset" do
     assert_not_respond_to build_user, :password_reset_token
+  end
+
+  test "reset codes are digested with their own key, never as email verification codes" do
+    user = build_user.tap(&:save!)
+    code = user.issue_password_reset_code(user.request_password_reset)
+
+    assert_not_equal user.send(:email_code_digest, code), user.reload.password_reset_code_digest
+    assert_nil user.email_verification_code_digest
+    assert_not user.verify_email_code(code)
+  end
+
+  test "a reset authorization is tied to the password and the reset generation" do
+    user = build_user.tap(&:save!)
+    token = user.verify_password_reset_code(user.issue_password_reset_code(user.request_password_reset))
+    assert_equal user, User.find_by_token_for(:password_reset, token)
+
+    user.update!(password_reset_generation: user.password_reset_generation + 1)
+    assert_nil User.find_by_token_for(:password_reset, token)
+  end
+
+  test "a login checked against the old password can't start a session after a reset" do
+    user = build_user.tap(&:save!)
+    stale = User.authenticate_by(email: user.email, password: "correct horse battery")
+    token = user.verify_password_reset_code(user.issue_password_reset_code(user.request_password_reset))
+    User.reset_password(token, "a brand new passphrase")
+
+    assert_nil stale.with_password_unchanged { :started }
+    assert_equal :started, User.find(user.id).with_password_unchanged { :started }
+  end
+
+  test "reset_password rejects a nil token and a disabled account" do
+    user = build_user.tap(&:save!)
+    token = user.verify_password_reset_code(user.issue_password_reset_code(user.request_password_reset))
+
+    assert_nil User.reset_password(nil, "a brand new passphrase")
+    user.update!(account_status: "disabled")
+    assert_nil User.reset_password(token, "a brand new passphrase")
+    assert user.reload.authenticate("correct horse battery")
   end
 end

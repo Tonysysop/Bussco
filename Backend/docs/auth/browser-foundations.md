@@ -17,7 +17,7 @@ These are **browser request-integrity controls**. They prove a request came
 from our own page in a browser that holds our session cookie. They do **not**
 say who the user is or what they may do:
 - Authentication (identity, login, the `bussco_auth` session): increments 1–3.
-- Admin access: increment 5.
+- Admin access: increment 6.
 - Authorization (membership gates, admin roles, financial approvals): not designed
   yet; financial approval permissions are explicitly undefined (`design.md`).
 
@@ -188,7 +188,7 @@ a revocation guarantee.
 
 ### 6. Revocable database-backed auth sessions (rules; table built in increment 3)
 - `sessions` row: `user_id`, `token_digest`, `created_at`, `last_seen_at`, `ip_address`,
-  `user_agent`. The `admin` flag is added in increment 5.
+  `user_agent`. The `admin` flag is added in increment 6.
 - Cookie `bussco_auth`: a random opaque token (only its SHA-256 digest is stored),
   `httponly: true`, `same_site: :strict`,
   `secure` in production, host-only (no `domain`), and no `expires`, so it lasts

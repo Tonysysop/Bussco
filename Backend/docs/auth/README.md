@@ -1,8 +1,10 @@
 # Authentication — index
 
-Status: increments 0–3 (browser foundations, registration, email verification, member
-sessions) are **implemented**; increments 4–5 are **planned**. Members can register, verify
-their email (which signs in the registering browser), log in and log out.
+Status: increments 0–3 and 5 (browser foundations, registration, email verification, member
+sessions, password recovery) are **implemented**; admin access and password change are
+**planned**. Members can register, verify their email (which signs in the registering
+browser), log in, log out and reset a forgotten password by emailed code. Increment 4 is the
+membership application ([../membership/application.md](../membership/application.md)).
 
 Read only the spec for the increment you are implementing.
 
@@ -12,8 +14,9 @@ Read only the spec for the increment you are implementing.
 | 1 | Registration + DB constraints (**implemented**) | [registration.md](registration.md) | 0 |
 | 2 | Email verification by six-digit code (**implemented**) | [email-verification.md](email-verification.md) | 0, 1 |
 | 3 | Member sessions (login, logout, current user) (**implemented**) | [sessions.md](sessions.md) | 0, 1, 2 |
-| 4 | Password recovery + password change | [password-recovery.md](password-recovery.md) | 0, 1, 3 |
-| 5 | Admin login + controlled provisioning | [admin-access.md](admin-access.md) | 0, 2, 3 |
+| 5 | Password recovery by six-digit code (**implemented**) | [password-recovery.md](password-recovery.md) | 0, 1, 2, 3 |
+| 6 | Admin login + controlled provisioning | [admin-access.md](admin-access.md) | 0, 2, 3 |
+| 7 | Password change (authenticated) | see "Password change" below | 0, 1, 3, 5 |
 
 Each increment ships with its migrations, tests and doc updates, and leaves
 the app working on its own.
@@ -34,3 +37,10 @@ the app working on its own.
   `ActiveSupport::MessageVerifier`. The Rails 8 authentication generator is a
   reference to borrow from, not something we must run.
 - Never log passwords, verification codes, reset tokens, CSRF tokens or cookies.
+
+## Password change (planned)
+`PATCH /api/v1/auth/password` (authenticated) `{ "current_password": "…", "password": "…" }`
+→ `200` · `422`. Requires `current_password`; same password rules as registration. Deletes all
+of the user's `sessions` rows in the same transaction as the update, then starts a new session
+and calls `rotate_browser_session`, so the user stays logged in with a new auth cookie and CSRF
+token. Wrong `current_password` → `422`, no change; the pre-change CSRF token is rejected after.
