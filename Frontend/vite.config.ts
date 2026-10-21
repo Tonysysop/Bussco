@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { resolve } from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
@@ -10,5 +11,15 @@ export default defineConfig({
     alias: {
       "@": resolve(import.meta.dirname, "./src"),
     },
+  },
+  server: {
+    // Object form keeps the browser's Host, so Rails' Origin check sees the Vite origin.
+    // The string shorthand sets changeOrigin: true and Rails rejects every POST
+    // (Backend/docs/auth/browser-foundations.md §4).
+    proxy: { "/api": { target: "http://127.0.0.1:3000", changeOrigin: false } },
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.ts",
   },
 })
