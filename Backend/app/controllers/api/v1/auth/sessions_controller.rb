@@ -20,8 +20,10 @@ module Api
             render json: { error: "invalid_credentials" }, status: :unauthorized
           elsif !user.email_verified_at?
             render json: { error: "email_not_verified" }, status: :forbidden
+          elsif (csrf_token = user.with_password_unchanged { start_session_for(user) })
+            render json: { user: user_json(user), csrf_token: }, status: :created
           else
-            render json: { user: user_json(user), csrf_token: start_session_for(user) }, status: :created
+            render json: { error: "invalid_credentials" }, status: :unauthorized
           end
         end
 

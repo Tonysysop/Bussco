@@ -23,7 +23,7 @@ build differs from or adds to this spec.
 | `account_status` | `"active"` |
 | `membership_status` | `"not_started"` (submitting a membership application later sets `"awaiting_approval"`; see [membership/application.md](../membership/application.md)) |
 | `sap_id` | `null` |
-| Admin permissions | none (the `admin_roles` table doesn't exist until increment 5) |
+| Admin permissions | none (the `admin_roles` table doesn't exist until increment 6) |
 
 `active` means the account is enabled. It does **not** mean membership is
 approved. No request to this endpoint can set any of these values.
@@ -198,7 +198,7 @@ Request tests run with forgery protection enabled (see increment 0).
   `app/models/user.rb`, `app/controllers/api/v1/auth/registrations_controller.rb`,
   route `namespace :auth { resources :registrations, only: :create }`.
 - **`has_secure_password reset_token: false`.** Rails 8.1 otherwise generates a
-  `password_reset_token`; resets belong to increment 4.
+  `password_reset_token`; resets use their own `generates_token_for :password_reset` (increment 5).
 - **Non-string and NUL values.** `params.expect` permits any scalar. A number
   or boolean would crash normalization, and a NUL character (`\u0000`, legal in
   JSON) makes bcrypt raise on password assignment and PostgreSQL reject text.

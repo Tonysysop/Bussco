@@ -10,7 +10,7 @@ Status: **implemented**.
 
 ## Exclusions
 - Cookie middleware, CSRF and origin checks: done in increment 0, reused here.
-- Admin login and the `admin` column (increment 5); password reset (increment 4).
+- Admin login and the `admin` column (increment 6); password reset (increment 5).
 - Login by SAP ID: nothing assigns `sap_id` yet. Add it when admins can link one.
 - Membership-gated endpoints (dashboard, savings, loans). They'll use a separate
   `require_approved_membership` check when built.

@@ -14,6 +14,9 @@ Rails.application.routes.draw do
         resources :registrations, only: :create
         resource :email_verification, only: [ :create, :update ]
         resource :session, only: [ :create, :destroy ]
+        resource :password_reset, path: "password_resets", only: [ :create, :update ] do
+          post :verify
+        end
         get "me", to: "sessions#show"
       end
 
