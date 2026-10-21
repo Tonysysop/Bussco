@@ -21,7 +21,7 @@ build differs from or adds to this spec.
 |-------|-----------------------|
 | `email_verified_at` | `null` |
 | `account_status` | `"active"` |
-| `membership_status` | `"not_started"` (the only value the DB accepts until the membership increment widens the check constraint in its own migration) |
+| `membership_status` | `"not_started"` (submitting a membership application later sets `"awaiting_approval"`; see [membership/application.md](../membership/application.md)) |
 | `sap_id` | `null` |
 | Admin permissions | none (the `admin_roles` table doesn't exist until increment 5) |
 
@@ -85,7 +85,7 @@ normalized. No `citext`, no expression index.
 | `password_digest` | string | NOT NULL | — | |
 | `email_verified_at` | datetime | NULL | `null` | |
 | `account_status` | string | NOT NULL | `'active'` | `IN ('active', 'disabled')` |
-| `membership_status` | string | NOT NULL | `'not_started'` | `IN ('not_started')`; the membership increment widens it |
+| `membership_status` | string | NOT NULL | `'not_started'` | `IN ('not_started', 'awaiting_approval')` (widened by the membership application migration) |
 | `sap_id` | string | NULL | `null` | unique index (PostgreSQL allows many NULLs); `sap_id IS NULL OR sap_id !~ '^\s*$'` |
 | timestamps | | NOT NULL | | |
 

@@ -10,9 +10,82 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_21_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.datetime "created_at", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "membership_applications", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "sap_staff_id"
+    t.string "business_unit"
+    t.string "department"
+    t.string "office_location"
+    t.string "primary_phone"
+    t.string "secondary_phone"
+    t.date "date_of_birth"
+    t.string "sex"
+    t.string "marital_status"
+    t.string "nationality"
+    t.text "home_address"
+    t.string "next_of_kin_name"
+    t.string "next_of_kin_relationship"
+    t.string "next_of_kin_phone"
+    t.text "next_of_kin_address"
+    t.bigint "monthly_contribution_kobo"
+    t.date "contribution_start_date"
+    t.string "declaration_version"
+    t.datetime "declaration_accepted_at"
+    t.datetime "submitted_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_membership_applications_on_user_id", unique: true
+    t.check_constraint "business_unit IS NULL OR char_length(business_unit::text) >= 1 AND char_length(business_unit::text) <= 120 AND business_unit::text !~ '^\\s|\\s$'::text", name: "membership_applications_business_unit_format"
+    t.check_constraint "contribution_start_date IS NULL OR EXTRACT(day FROM contribution_start_date) = 1::numeric", name: "membership_applications_contribution_start_first_of_month"
+    t.check_constraint "department IS NULL OR char_length(department::text) >= 1 AND char_length(department::text) <= 120 AND department::text !~ '^\\s|\\s$'::text", name: "membership_applications_department_format"
+    t.check_constraint "home_address IS NULL OR char_length(home_address) >= 1 AND char_length(home_address) <= 300 AND home_address !~ '^\\s|\\s$'::text", name: "membership_applications_home_address_format"
+    t.check_constraint "marital_status IS NULL OR char_length(marital_status::text) >= 1 AND char_length(marital_status::text) <= 30 AND marital_status::text !~ '^\\s|\\s$'::text", name: "membership_applications_marital_status_format"
+    t.check_constraint "monthly_contribution_kobo IS NULL OR monthly_contribution_kobo > 0", name: "membership_applications_monthly_contribution_positive"
+    t.check_constraint "nationality IS NULL OR char_length(nationality::text) >= 1 AND char_length(nationality::text) <= 60 AND nationality::text !~ '^\\s|\\s$'::text", name: "membership_applications_nationality_format"
+    t.check_constraint "next_of_kin_address IS NULL OR char_length(next_of_kin_address) >= 1 AND char_length(next_of_kin_address) <= 300 AND next_of_kin_address !~ '^\\s|\\s$'::text", name: "membership_applications_next_of_kin_address_format"
+    t.check_constraint "next_of_kin_name IS NULL OR char_length(next_of_kin_name::text) >= 1 AND char_length(next_of_kin_name::text) <= 120 AND next_of_kin_name::text !~ '^\\s|\\s$'::text", name: "membership_applications_next_of_kin_name_format"
+    t.check_constraint "next_of_kin_phone IS NULL OR next_of_kin_phone::text ~ '^\\+?[0-9]{7,15}$'::text", name: "membership_applications_next_of_kin_phone_format"
+    t.check_constraint "next_of_kin_relationship IS NULL OR char_length(next_of_kin_relationship::text) >= 1 AND char_length(next_of_kin_relationship::text) <= 50 AND next_of_kin_relationship::text !~ '^\\s|\\s$'::text", name: "membership_applications_next_of_kin_relationship_format"
+    t.check_constraint "office_location IS NULL OR char_length(office_location::text) >= 1 AND char_length(office_location::text) <= 200 AND office_location::text !~ '^\\s|\\s$'::text", name: "membership_applications_office_location_format"
+    t.check_constraint "primary_phone IS NULL OR primary_phone::text ~ '^\\+?[0-9]{7,15}$'::text", name: "membership_applications_primary_phone_format"
+    t.check_constraint "sap_staff_id IS NULL OR sap_staff_id::text ~ '^[A-Za-z0-9/-]{1,30}$'::text", name: "membership_applications_sap_staff_id_format"
+    t.check_constraint "secondary_phone IS NULL OR secondary_phone::text ~ '^\\+?[0-9]{7,15}$'::text", name: "membership_applications_secondary_phone_format"
+    t.check_constraint "sex IS NULL OR char_length(sex::text) >= 1 AND char_length(sex::text) <= 30 AND sex::text !~ '^\\s|\\s$'::text", name: "membership_applications_sex_format"
+    t.check_constraint "submitted_at IS NULL OR sap_staff_id IS NOT NULL AND business_unit IS NOT NULL AND department IS NOT NULL AND office_location IS NOT NULL AND primary_phone IS NOT NULL AND date_of_birth IS NOT NULL AND sex IS NOT NULL AND marital_status IS NOT NULL AND nationality IS NOT NULL AND home_address IS NOT NULL AND next_of_kin_name IS NOT NULL AND next_of_kin_relationship IS NOT NULL AND next_of_kin_address IS NOT NULL AND monthly_contribution_kobo IS NOT NULL AND contribution_start_date IS NOT NULL AND declaration_version IS NOT NULL AND declaration_accepted_at IS NOT NULL", name: "membership_applications_submitted_complete"
+  end
 
   create_table "sessions", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -58,9 +131,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_090000) do
     t.check_constraint "char_length(full_name::text) >= 1 AND char_length(full_name::text) <= 120 AND full_name::text !~ '^\\s|\\s$'::text", name: "users_full_name_trimmed_length"
     t.check_constraint "email::text = lower(email::text) AND char_length(email::text) <= 254 AND email::text ~ '^[^@\\s]+@[^@\\s]+$'::text", name: "users_email_normalized"
     t.check_constraint "email_verification_attempts >= 0 AND email_verification_attempts <= 5", name: "users_email_verification_attempts_range"
-    t.check_constraint "membership_status::text = 'not_started'::text", name: "users_membership_status_allowed"
+    t.check_constraint "membership_status::text = ANY (ARRAY['not_started'::character varying, 'awaiting_approval'::character varying]::text[])", name: "users_membership_status_allowed"
     t.check_constraint "sap_id IS NULL OR sap_id::text !~ '^\\s*$'::text", name: "users_sap_id_not_blank"
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "membership_applications", "users", on_delete: :cascade
   add_foreign_key "sessions", "users", on_delete: :cascade
 end

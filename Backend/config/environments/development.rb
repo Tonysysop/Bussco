@@ -29,6 +29,11 @@ Rails.application.configure do
   # Rate-limit counters (docs/auth/registration.md): per process, reset on restart.
   config.x.rate_limit_store = :memory_store
 
+  config.active_storage.service = :local
+
+  # Membership declaration accepted on submission; draft-v1 is unapproved, allowed outside production only.
+  config.x.membership_declaration_version = "draft-v1"
+
   # Surface delivery failures (e.g. Resend rejecting the key or sender) in the job log.
   config.action_mailer.raise_delivery_errors = true
 
