@@ -71,8 +71,10 @@ class MembershipApplication < ApplicationRecord
     file.rewind
     type = PHOTO_SIGNATURES.find { |signature, _| head.start_with?(signature) }&.last
     # Saving the attachment touches this row in the same transaction: a versioned UPDATE, so a stale
-    # upload raises StaleObjectError and rolls back like any other write.
-    self.passport_photo = { io: file, filename: "passport-photo", content_type: type, identify: false }
+    # upload raises StaleObjectError and rolls back like any other write. Marked analyzed: the analyze
+    # job would touch the row again after the response, silently outdating the lock_version returned.
+    self.passport_photo = { io: file, filename: "passport-photo", content_type: type, identify: false,
+                            metadata: { analyzed: true } }
   end
 
   # Atomic: the application and the user's membership_status change together or not at all.

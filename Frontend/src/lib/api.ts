@@ -107,12 +107,28 @@ export type EmploymentFields = {
   office_location: string | null
 }
 
+export type PersonalFields = {
+  primary_phone: string | null
+  secondary_phone: string | null
+  date_of_birth: string | null
+  sex: string | null
+  marital_status: string | null
+  nationality: string | null
+  home_address: string | null
+}
+
 // Only the fields the frontend reads (Backend/docs/membership/application.md).
 export type MembershipApplication = {
-  application: EmploymentFields & {
-    submitted_at: string | null
-    lock_version: number
-  }
+  application: EmploymentFields &
+    PersonalFields & {
+      passport_photo: {
+        content_type: string
+        byte_size: number
+        checksum: string
+      } | null
+      submitted_at: string | null
+      lock_version: number
+    }
   applicant: { full_name: string; email: string; membership_status: string }
   // null once submitted; current_stage is the first incomplete stage, or "review".
   progress: {
@@ -150,6 +166,31 @@ export const applicationQuery = (user: Applicant) =>
     retry: false,
   })
 
+// The saved passport photo, in memory only (never browser storage). Image bytes can't carry the
+// applicant's email, so Rails names the owner in X-Applicant-Id: a photo answered for another sign-in
+// (switched in another tab mid-request) is an error, never shown. Keyed by checksum, so a replacement
+// is a new entry and identical bytes are never fetched twice.
+export const passportPhotoQuery = (user: Applicant, checksum: string) =>
+  queryOptions({
+    queryKey: [...MEMBERSHIP_KEY, "passport_photo", user.id, checksum],
+    queryFn: async ({ client }) => {
+      const response = await fetch(`${APPLICATION_PATH}/passport_photo`, {
+        credentials: "include",
+      })
+      if (!response.ok) {
+        if (response.status === 401) forgetSession(client)
+        throw new ApiError(response, null)
+      }
+      if (response.headers.get("X-Applicant-Id") !== String(user.id)) {
+        revalidateIdentity(client)
+        throw new IdentityMismatch("Photo belongs to a different sign-in")
+      }
+      return response.blob()
+    },
+    staleTime: Infinity,
+    retry: false,
+  })
+
 // The sign-in changed underneath this tab: ask Rails who is signed in now.
 export const revalidateIdentity = (queryClient: QueryClient) =>
   queryClient.invalidateQueries({ queryKey: meQuery.queryKey })
@@ -161,15 +202,17 @@ export function forgetSession(queryClient: QueryClient) {
   queryClient.removeQueries({ queryKey: MEMBERSHIP_KEY })
 }
 
+// FormData goes as multipart, with the boundary the browser sets; anything else as JSON.
 async function send(method: string, path: string, data: unknown) {
+  const form = data instanceof FormData
   try {
     const body = await request(path, {
       method,
       headers: {
-        "Content-Type": "application/json",
+        ...(form ? {} : { "Content-Type": "application/json" }),
         "X-CSRF-Token": await fetchCsrfToken(),
       },
-      body: JSON.stringify(data),
+      body: form ? data : JSON.stringify(data),
     })
     // Sign-in resets the Rails session, killing the old token; Rails returns its replacement.
     const rotated = (body as { csrf_token?: unknown } | null)?.csrf_token
@@ -192,25 +235,17 @@ export const startApplication = async (user: Applicant) =>
     user
   )
 
-// Saves one stage with the lock_version the form's values were loaded with (never a newer cached
-// one, which would overwrite changes the form never saw). Only Rails' answer updates the cache.
-export function useSaveStage(stage: string, user: Applicant) {
+// One write to the application, sent with the lock_version the form's values were loaded with (never
+// a newer cached one, which would overwrite changes the form never saw). Only Rails' answer updates
+// the cache.
+function useApplicationWrite<Variables>(
+  user: Applicant,
+  write: (variables: Variables) => Promise<unknown>
+) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({
-      version,
-      fields,
-    }: {
-      version: number
-      fields: Record<string, string | null>
-    }) =>
-      forApplicant(
-        (await apiPatch(`${APPLICATION_PATH}/stages/${stage}`, {
-          lock_version: version,
-          application: fields,
-        })) as MembershipApplication,
-        user
-      ),
+    mutationFn: async (variables: Variables) =>
+      forApplicant((await write(variables)) as MembershipApplication, user),
     onSuccess: (data) =>
       queryClient.setQueryData(applicationQuery(user).queryKey, () => data),
     onError: (error) => {
@@ -228,6 +263,33 @@ export function useSaveStage(stage: string, user: Applicant) {
     },
   })
 }
+
+export const useSaveStage = (stage: string, user: Applicant) =>
+  useApplicationWrite(
+    user,
+    ({
+      version,
+      fields,
+    }: {
+      version: number
+      fields: Record<string, string | null>
+    }) =>
+      apiPatch(`${APPLICATION_PATH}/stages/${stage}`, {
+        lock_version: version,
+        application: fields,
+      })
+  )
+
+export const useUploadPhoto = (user: Applicant) =>
+  useApplicationWrite(
+    user,
+    ({ version, photo }: { version: number; photo: File }) => {
+      const body = new FormData()
+      body.append("photo", photo)
+      body.append("lock_version", String(version))
+      return send("PUT", `${APPLICATION_PATH}/passport_photo`, body)
+    }
+  )
 
 export const apiErrorCode = (error: Error) =>
   error instanceof ApiError

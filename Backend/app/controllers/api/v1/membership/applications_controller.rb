@@ -48,6 +48,8 @@ module Api
           return render_not_found unless @application.passport_photo.attached?
 
           response.set_header("Cache-Control", "private, no-store")
+          # Image bytes can't say whose they are: the client drops a photo answered for another sign-in.
+          response.set_header("X-Applicant-Id", current_user.id.to_s)
           blob = @application.passport_photo.blob
           send_data blob.download, type: blob.content_type, disposition: "inline"
         end
@@ -128,7 +130,7 @@ module Api
           {
             application: application.slice(*MembershipApplication::STAGES.values.flatten,
               "declaration_version", "declaration_accepted_at", "submitted_at", "lock_version")
-              .merge("passport_photo" => photo && { content_type: photo.content_type, byte_size: photo.byte_size }),
+              .merge("passport_photo" => photo && { content_type: photo.content_type, byte_size: photo.byte_size, checksum: photo.checksum }),
             applicant: current_user.slice("full_name", "email", "membership_status"),
             progress: application.submitted? ? nil : application.progress,
             policy: {
