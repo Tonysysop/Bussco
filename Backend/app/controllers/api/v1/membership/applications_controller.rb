@@ -12,6 +12,7 @@ module Api
           by: -> { authenticated_session&.user_id || request.remote_ip }
 
         before_action :require_authentication
+        before_action :require_expected_applicant, only: WRITES
         before_action :set_application, except: :create
         before_action :require_draft, :require_current_version, only: WRITES - [ :create ]
 
@@ -83,6 +84,14 @@ module Api
 
         def set_application
           @application = current_user.membership_application or render_not_found
+        end
+
+        # The client names the applicant it is writing for. After a sign-in changes in another tab, the
+        # session cookie belongs to someone else: their application must not receive this write.
+        def require_expected_applicant
+          return if request.headers["X-Applicant-Id"] == current_user.id.to_s
+
+          render json: { error: "identity_mismatch" }, status: :conflict
         end
 
         def require_draft

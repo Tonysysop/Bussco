@@ -68,6 +68,11 @@ in the same transaction as the application.
 - Every action needs a session; otherwise `401 { "error": "unauthenticated" }`. Disabled
   accounts get the same 401.
 - Unsafe requests need `Origin` and `X-CSRF-Token`; otherwise 403.
+- Every write (start, stage save, photo upload, submission) must also send `X-Applicant-Id` with the
+  signed-in user's id (from `/me`). Any other value, or none, gets
+  `409 { "error": "identity_mismatch" }` before the application is read or written. A browser tab still
+  showing applicant A, after B signed in elsewhere in the same browser, therefore can't write A's
+  details into B's application, even when the two `lock_version`s happen to match.
 - The application is always the session user's own: no request names an id.
 - Write actions are rate limited at 300 per 15 minutes per signed-in user (not per IP: staff may share an office IP).
 

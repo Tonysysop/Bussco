@@ -13,7 +13,7 @@ class MembershipApplicationRaceTest < ActionDispatch::IntegrationTest
     @user = User.create!(full_name: "Ada Obi", email: "ada@example.com", password: PASSWORD, email_verified_at: Time.current)
     @headers = browser_headers
     post "/api/v1/auth/session", params: { email: @user.email, password: PASSWORD }, headers: @headers, as: :json
-    @headers = @headers.merge("X-CSRF-Token" => response.parsed_body.fetch("csrf_token"))
+    @headers = @headers.merge("X-CSRF-Token" => response.parsed_body.fetch("csrf_token"), "X-Applicant-Id" => @user.id.to_s)
   end
 
   teardown do
