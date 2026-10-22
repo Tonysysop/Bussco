@@ -256,13 +256,12 @@ describe("ApplyPage: resume and navigation", () => {
   })
 
   it("moves through stages without forms yet with Back and Continue only, saving nothing", async () => {
-    const fetchMock = stubFetch(SIGNED_IN, draft({}, "personal"))
-    const router = await renderRoute("/apply/personal")
+    const fetchMock = stubFetch(SIGNED_IN, draft({}, "next_of_kin"))
+    const router = await renderRoute("/apply/next_of_kin")
     const user = userEvent.setup()
-    await screen.findByRole("heading", { name: "Personal details" })
+    await screen.findByRole("heading", { name: "Next of kin" })
 
     for (const [title, path] of [
-      ["Next of kin", "/apply/next_of_kin"],
       ["Monthly contribution", "/apply/savings"],
     ] as const) {
       await user.click(screen.getByRole("link", { name: /^Continue/ }))
@@ -291,9 +290,9 @@ describe("ApplyPage: resume and navigation", () => {
   })
 
   it("has one heading, an ordered step list and keyboard order Back then Continue", async () => {
-    stubFetch(SIGNED_IN, draft({}, "personal"))
-    await renderRoute("/apply/personal")
-    await screen.findByRole("heading", { name: "Personal details" })
+    stubFetch(SIGNED_IN, draft({}, "next_of_kin"))
+    await renderRoute("/apply/next_of_kin")
+    await screen.findByRole("heading", { name: "Next of kin" })
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1)
     expect(screen.getByRole("list").tagName).toBe("OL")

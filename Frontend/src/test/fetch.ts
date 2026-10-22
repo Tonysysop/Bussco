@@ -5,13 +5,20 @@ type Reply =
   | {
       status: number
       body?: unknown
+      // A non-JSON body sent as-is, like Rails' send_data (the passport photo).
+      raw?: string
       headers?: Record<string, string>
       path?: string
     }
   | Error
 
 // Like Rails' API, sends Content-Type: application/json even with no body (`head :accepted`).
-export function json({ status, body, headers }: Exclude<Reply, Error>) {
+export function json({ status, body, raw, headers }: Exclude<Reply, Error>) {
+  if (raw !== undefined)
+    return new Response(raw, {
+      status,
+      headers: { "Content-Type": "image/png", ...headers },
+    })
   return new Response(body === undefined ? null : JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...headers },

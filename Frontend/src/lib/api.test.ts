@@ -76,3 +76,59 @@ describe("api response bodies", () => {
     )
   })
 })
+
+describe("passportPhotoQuery", () => {
+  const A = { id: 1, email: "ada@example.com" }
+  const B = { id: 2, email: "bola@example.com" }
+  const PHOTO = "/api/v1/membership/application/passport_photo"
+  const image = (owner: string) => ({
+    path: PHOTO,
+    status: 200,
+    raw: "photo",
+    headers: { "X-Applicant-Id": owner },
+  })
+
+  it("returns the photo only when Rails names the requesting applicant as its owner", async () => {
+    const { createQueryClient, passportPhotoQuery } = await loadApi()
+    const fetchMock = stubFetch(image("1"))
+    const blob = await createQueryClient().fetchQuery(
+      passportPhotoQuery(A, "sum")
+    )
+
+    expect(await blob.text()).toBe("photo")
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: "include" })
+  })
+
+  it("rejects a photo answered for another sign-in, never caches it, and rechecks /me", async () => {
+    const { createQueryClient, IdentityMismatch, meQuery, passportPhotoQuery } =
+      await loadApi()
+    stubFetch(image("2"), {
+      path: "/api/v1/auth/me",
+      status: 200,
+      body: { user: B },
+    })
+    const client = createQueryClient()
+    client.setQueryData(meQuery.queryKey, { user: { ...A } } as never)
+
+    await expect(
+      client.fetchQuery(passportPhotoQuery(A, "sum"))
+    ).rejects.toBeInstanceOf(IdentityMismatch)
+    expect(
+      client.getQueryData(passportPhotoQuery(A, "sum").queryKey)
+    ).toBeUndefined()
+    expect(client.getQueryState(meQuery.queryKey)?.isInvalidated).toBe(true)
+  })
+
+  it("is keyed per applicant and per photo, and forgotten with the session", async () => {
+    const { createQueryClient, forgetSession, passportPhotoQuery } =
+      await loadApi()
+    const client = createQueryClient()
+    const key = passportPhotoQuery(A, "sum").queryKey
+    expect(key).not.toEqual(passportPhotoQuery(B, "sum").queryKey)
+    expect(key).not.toEqual(passportPhotoQuery(A, "other").queryKey)
+
+    client.setQueryData(key, new Blob(["photo"]))
+    forgetSession(client)
+    expect(client.getQueryData(key)).toBeUndefined()
+  })
+})

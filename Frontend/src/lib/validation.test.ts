@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { signupSchema } from "@/lib/validation"
+import {
+  fromRailsPhone,
+  personalErrors,
+  photoProblem,
+  signupSchema,
+  todayInLagos,
+  toRailsPhone,
+} from "@/lib/validation"
 
 const valid = {
   full_name: "Ada Obi",
@@ -92,5 +99,148 @@ describe("signupSchema", () => {
     for (const email of ["a@b@c.com", "a b@example.com", "a@-example.com"]) {
       expect(errors({ email }).email).toEqual(["Email is invalid"])
     }
+  })
+})
+
+describe("phone numbers", () => {
+  it("adds +234 to Nigerian numbers, dropping a leading 0 and separators", () => {
+    expect(toRailsPhone("803 123 4567")).toBe("+2348031234567")
+    expect(toRailsPhone("0803-123-4567")).toBe("+2348031234567")
+    expect(toRailsPhone("(0803) 123.4567")).toBe("+2348031234567")
+  })
+
+  it("keeps international numbers as typed and blanks blank", () => {
+    expect(toRailsPhone("+44 20 7946 0958")).toBe("+442079460958")
+    expect(toRailsPhone("   ")).toBe("")
+  })
+
+  it("shows a saved +234 number without the prefix, and anything else unchanged", () => {
+    expect(fromRailsPhone("+2348031234567")).toBe("8031234567")
+    expect(fromRailsPhone("+442079460958")).toBe("+442079460958")
+    expect(fromRailsPhone("08031234567")).toBe("08031234567")
+    expect(fromRailsPhone(null)).toBe("")
+    expect(fromRailsPhone(undefined)).toBe("")
+  })
+})
+
+describe("todayInLagos", () => {
+  it("is already the next day in Lagos at 23:30 UTC (UTC+1)", () => {
+    expect(todayInLagos(new Date("2026-10-21T22:59:59Z"))).toBe("2026-10-21")
+    expect(todayInLagos(new Date("2026-10-21T23:00:00Z"))).toBe("2026-10-22")
+    expect(todayInLagos(new Date("2026-12-31T23:30:00Z"))).toBe("2027-01-01")
+  })
+})
+
+describe("personalErrors", () => {
+  const BLANK = {
+    primary_phone: "",
+    secondary_phone: "",
+    date_of_birth: "",
+    sex: "",
+    marital_status: "",
+    nationality: "",
+    home_address: "",
+  }
+  const FILLED = {
+    ...BLANK,
+    primary_phone: "+2348031234567",
+    date_of_birth: "1988-04-12",
+    sex: "Female",
+    marital_status: "Married",
+    nationality: "Nigerian",
+    home_address: "12 Marina Road\nLagos",
+  }
+
+  it("allows an empty draft, and requires everything but the secondary phone to continue", () => {
+    expect(personalErrors(BLANK, false, false).errors).toEqual({})
+    expect(
+      Object.keys(personalErrors(BLANK, true, false).errors).sort()
+    ).toEqual([
+      "date_of_birth",
+      "home_address",
+      "marital_status",
+      "nationality",
+      "passport_photo",
+      "primary_phone",
+      "sex",
+    ])
+    expect(personalErrors(FILLED, true, true)).toEqual({
+      errors: {},
+      data: FILLED,
+    })
+  })
+
+  it("requires the photo only to continue", () => {
+    expect(personalErrors(FILLED, true, false).errors).toEqual({
+      passport_photo: "Passport photograph can't be blank",
+    })
+    expect(personalErrors(FILLED, false, false).errors).toEqual({})
+  })
+
+  it("checks phones in Rails' format", () => {
+    const errors = (primary_phone: string, secondary_phone = "") =>
+      personalErrors({ ...BLANK, primary_phone, secondary_phone }, false, true)
+        .errors
+    expect(errors("+2348031234567")).toEqual({})
+    expect(errors("1234567")).toEqual({})
+    expect(errors("+123456")).toHaveProperty("primary_phone")
+    expect(errors("+1234567890123456")).toHaveProperty("primary_phone")
+    expect(errors("+234803abc4567")).toHaveProperty("primary_phone")
+    expect(errors("", "+12")).toHaveProperty("secondary_phone")
+  })
+
+  it("accepts dates of birth from 1900-01-01 to yesterday in Lagos", () => {
+    const error = (date_of_birth: string) =>
+      personalErrors({ ...BLANK, date_of_birth }, false, true).errors
+        .date_of_birth
+    const today = todayInLagos()
+    const yesterday = todayInLagos(new Date(Date.now() - 24 * 60 * 60 * 1000))
+    expect(error("1900-01-01")).toBeUndefined()
+    expect(error(yesterday)).toBeUndefined()
+    expect(error(today)).toBe("Date of birth must be in the past")
+    expect(error("1899-12-31")).toBe(
+      "Date of birth must be on or after 1 January 1900"
+    )
+    expect(error("2001-02-29")).toBe("Enter a valid date of birth")
+    expect(error("12/04/1988")).toBe("Enter a valid date of birth")
+  })
+
+  it("applies Rails' length and control-character rules, allowing line breaks only in the address", () => {
+    const errors = (fields: Partial<typeof BLANK>) =>
+      personalErrors({ ...BLANK, ...fields }, false, true).errors
+    expect(
+      errors({ sex: "x".repeat(30), nationality: "é".repeat(60) })
+    ).toEqual({})
+    expect(errors({ sex: "x".repeat(31) })).toHaveProperty("sex")
+    expect(errors({ marital_status: "x".repeat(31) })).toHaveProperty(
+      "marital_status"
+    )
+    expect(errors({ nationality: "x".repeat(61) })).toHaveProperty(
+      "nationality"
+    )
+    expect(errors({ home_address: "x".repeat(301) })).toHaveProperty(
+      "home_address"
+    )
+    expect(errors({ home_address: "1 Road\r\nLagos" })).toEqual({})
+    expect(errors({ home_address: "1 Road\tLagos" })).toHaveProperty(
+      "home_address"
+    )
+    expect(errors({ nationality: "Nige\nrian" })).toHaveProperty("nationality")
+  })
+})
+
+describe("photoProblem", () => {
+  const file = (type: string, size: number) =>
+    new File([new Uint8Array(size)], "photo", { type })
+
+  it("accepts JPG and PNG up to 2 MB", () => {
+    expect(photoProblem(file("image/png", 2 * 1024 * 1024))).toBeUndefined()
+    expect(photoProblem(file("image/jpeg", 10))).toBeUndefined()
+    expect(photoProblem(file("image/png", 2 * 1024 * 1024 + 1))).toBe(
+      "Passport photograph must be 2 MB or smaller"
+    )
+    expect(photoProblem(file("image/gif", 10))).toBe(
+      "Passport photograph must be a JPG or PNG image"
+    )
   })
 })

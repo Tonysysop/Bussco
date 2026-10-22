@@ -225,7 +225,8 @@ class Api::V1::Membership::ApplicationsControllerTest < ActionDispatch::Integrat
     start
     put_photo(upload(JPEG, "image/jpeg", "me.jpg"))
     assert_response :ok
-    assert_equal({ "content_type" => "image/jpeg", "byte_size" => JPEG.bytesize }, body.dig("application", "passport_photo"))
+    assert_equal({ "content_type" => "image/jpeg", "byte_size" => JPEG.bytesize, "checksum" => saved.passport_photo.blob.checksum },
+      body.dig("application", "passport_photo"))
 
     get PHOTO
     assert_response :ok
@@ -233,6 +234,34 @@ class Api::V1::Membership::ApplicationsControllerTest < ActionDispatch::Integrat
     assert_equal "image/jpeg", response.media_type
     assert_equal "private, no-store", response.headers["Cache-Control"]
     assert_equal "nosniff", response.headers["X-Content-Type-Options"]
+    assert_equal @user.id.to_s, response.headers["X-Applicant-Id"]
+  end
+
+  test "a photo upload or replacement returns the final lock_version: saves with it succeed, saves with the old one get 409" do
+    start
+    save_stage("personal", { sex: "Female" })
+
+    [ [ upload(PNG), "image/png" ], [ upload(JPEG, "image/jpeg", "me.jpg"), "image/jpeg" ] ].each do |file, type|
+      before_upload = version
+      put_photo(file)
+      assert_response :ok
+      returned = body.dig("application", "lock_version")
+
+      # No analysis job may touch the row after the response; the replaced photo's purge still runs.
+      assert_enqueued_jobs 0, only: ActiveStorage::AnalyzeJob
+      perform_enqueued_jobs
+      assert_equal returned, version, "nothing after the response may move lock_version"
+      assert_equal type, saved.passport_photo.blob.content_type
+      assert_equal 1, ActiveStorage::Blob.count, "a replaced photo is purged"
+
+      save_stage("personal", { sex: "Male" }, lock_version: before_upload)
+      assert_response :conflict
+      assert_equal "stale", body["error"]
+      assert_equal "Female", saved.sex
+
+      save_stage("personal", { marital_status: "Married" }, lock_version: returned)
+      assert_response :ok
+    end
   end
 
   test "an invalid replacement keeps the previous photo; a valid one replaces and purges it" do

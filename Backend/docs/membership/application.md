@@ -77,13 +77,13 @@ in the same transaction as the application.
 | `POST` | — | `201` new draft · `200` existing one (idempotent) |
 | `PATCH /stages/:stage` | `{ lock_version, application: {…stage fields} }`. Stages: `employment`, `personal`, `next_of_kin`, `savings` | `200` · `422 { errors }` · `409 stale` / `already_submitted` · `404` unknown stage |
 | `PUT /passport_photo` | multipart `photo`, `lock_version` | `200` · `422` · `409` |
-| `GET /passport_photo` | — | the owner's image, `Cache-Control: private, no-store`, `nosniff` · `404` |
+| `GET /passport_photo` | — | the owner's image, `Cache-Control: private, no-store`, `nosniff`, `X-Applicant-Id` (the session user's id) · `404` |
 | `POST /submission` | `{ lock_version, declaration_accepted: true, declaration_version }` | `201` · `422 { errors, missing }` · `409` · `503 declaration_unavailable` |
 
 Body for 200/201:
 ```json
 {
-  "application": { "…stage fields…", "passport_photo": { "content_type": "image/png", "byte_size": 1234 } | null,
+  "application": { "…stage fields…", "passport_photo": { "content_type": "image/png", "byte_size": 1234, "checksum": "…" } | null,
                    "declaration_version": null, "declaration_accepted_at": null, "submitted_at": null, "lock_version": 3 },
   "applicant": { "full_name": "…", "email": "…", "membership_status": "not_started" },
   "progress": { "stages": { "employment": "complete", "personal": "incomplete", "next_of_kin": "…", "savings": "…" },
@@ -132,9 +132,15 @@ A `409` also returns the saved `application`, so the client can reload or merge.
   `storage/`, which must be a persistent volume in production.
 - **Private:** Active Storage's own routes are off (`draw_routes = false`), so there are no public
   signed blob URLs and no anonymous direct uploads. Owners fetch their photo through
-  `GET …/passport_photo`.
+  `GET …/passport_photo`, which names its owner in `X-Applicant-Id` so a browser can drop a photo that
+  arrived for a different sign-in (an account switched in another tab mid-request). The JSON gives the
+  blob's `checksum`, which changes with every replacement.
 - **Type check:** the type comes from the file's first bytes (JPEG `FF D8 FF`, PNG signature), never
   from the filename or the client's Content-Type. The stored filename is always `passport-photo`.
+- **No background analysis:** the blob is stored as already analyzed. Active Storage's analyze job
+  would otherwise touch the application row after the response, raising `lock_version` past the one
+  just returned, so the applicant's next save would get a false `409 stale`. Image dimensions are never
+  used.
 - **Replacement:** the new file is validated before anything changes. An invalid upload leaves the
   previous photo in place; a valid one replaces it, and the old blob is purged by a background job.
 - **Time zone:** the app runs on `Africa/Lagos` time, so "today", "before today" and "next month"
