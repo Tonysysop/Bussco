@@ -16,5 +16,5 @@ export const routes: RouteObject[] = [
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-code", element: <ResetCodePage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },
-  { path: "/apply", element: <ApplyPage /> },
+  { path: "/apply/:stage?", element: <ApplyPage /> },
 ]

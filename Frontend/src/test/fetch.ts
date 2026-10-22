@@ -1,7 +1,14 @@
 import { vi } from "vitest"
 
+// A reply with `path` answers only that path; untagged replies answer everything else, in order.
 type Reply =
-  { status: number; body?: unknown; headers?: Record<string, string> } | Error
+  | {
+      status: number
+      body?: unknown
+      headers?: Record<string, string>
+      path?: string
+    }
+  | Error
 
 // Like Rails' API, sends Content-Type: application/json even with no body (`head :accepted`).
 export function json({ status, body, headers }: Exclude<Reply, Error>) {
@@ -22,7 +29,12 @@ export function stubFetch(...replies: Reply[]) {
         status: 200,
         body: { csrf_token: `csrf-token-${++tokens}` },
       })
-    const reply = replies.shift()!
+    const pathOf = (r: Reply) => (r instanceof Error ? undefined : r.path)
+    const forPath = replies.findIndex((r) => pathOf(r) === path)
+    const index =
+      forPath !== -1 ? forPath : replies.findIndex((r) => !pathOf(r))
+    if (index === -1) throw new Error(`stubFetch: no reply left for ${path}`)
+    const [reply] = replies.splice(index, 1)
     if (reply instanceof Error) throw reply
     return json(reply)
   })

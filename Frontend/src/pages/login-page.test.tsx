@@ -5,6 +5,14 @@ import { describe, expect, it } from "vitest"
 import { callsTo, csrfHeader, stubFetch } from "@/test/fetch"
 import { renderRoute } from "@/test/render"
 
+// /apply also loads the application; a 404 is "not started", which shows the start screen.
+const NOT_STARTED = {
+  path: "/api/v1/membership/application",
+  status: 404,
+  body: { error: "not_found" },
+}
+const APPLY_HEADING = "Complete your membership application"
+
 const SESSION = "/api/v1/auth/session"
 const ME = "/api/v1/auth/me"
 const USER = {
@@ -36,13 +44,13 @@ async function fillAndSubmit(email = " Ada@Example.com ", password = "secret") {
 
 describe("LoginPage", () => {
   it("signs in with normalized values and opens /apply as the returned user", async () => {
-    const fetchMock = stubFetch(SIGNED_OUT, LOGGED_IN, SIGNED_IN)
+    const fetchMock = stubFetch(NOT_STARTED, SIGNED_OUT, LOGGED_IN, SIGNED_IN)
     const router = await renderRoute("/login")
 
     await fillAndSubmit()
 
     expect(
-      await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+      await screen.findByRole("heading", { name: APPLY_HEADING })
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/apply")
     const [call] = callsTo(fetchMock, SESSION)
@@ -54,12 +62,12 @@ describe("LoginPage", () => {
   })
 
   it("uses the CSRF token Rails rotates on sign-in for the next request", async () => {
-    const fetchMock = stubFetch(SIGNED_OUT, LOGGED_IN, SIGNED_IN, {
+    const fetchMock = stubFetch(NOT_STARTED, SIGNED_OUT, LOGGED_IN, SIGNED_IN, {
       status: 202,
     })
     const router = await renderRoute("/login")
     await fillAndSubmit()
-    await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    await screen.findByRole("heading", { name: APPLY_HEADING })
 
     await act(() =>
       router.navigate("/verify-email", {
@@ -75,11 +83,11 @@ describe("LoginPage", () => {
   })
 
   it("keeps the session across reloads: a valid cookie skips the form", async () => {
-    const fetchMock = stubFetch(SIGNED_IN, SIGNED_IN)
+    const fetchMock = stubFetch(NOT_STARTED, SIGNED_IN, SIGNED_IN)
     const router = await renderRoute("/login")
 
     expect(
-      await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+      await screen.findByRole("heading", { name: APPLY_HEADING })
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/apply")
     expect(callsTo(fetchMock, SESSION)).toHaveLength(0)
@@ -169,6 +177,7 @@ describe("LoginPage", () => {
 
   it("after verifying an unverified login, lands on /apply without bouncing through /login", async () => {
     stubFetch(
+      NOT_STARTED,
       SIGNED_OUT,
       { status: 403, body: { error: "email_not_verified" } },
       {
@@ -187,7 +196,7 @@ describe("LoginPage", () => {
     await user.type(screen.getByLabelText("Verification code"), "123456")
     await user.click(screen.getByRole("button", { name: "Verify Email" }))
 
-    await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    await screen.findByRole("heading", { name: APPLY_HEADING })
     expect(visited).not.toContain("/login")
   })
 
@@ -221,6 +230,7 @@ describe("LoginPage", () => {
 
   it("on a CSRF rejection, says so and fetches a new token for the next attempt", async () => {
     const fetchMock = stubFetch(
+      NOT_STARTED,
       SIGNED_OUT,
       { status: 403, body: { error: "invalid_csrf_token" } },
       LOGGED_IN,
@@ -234,7 +244,7 @@ describe("LoginPage", () => {
     )
     await user.click(submitButton())
 
-    await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    await screen.findByRole("heading", { name: APPLY_HEADING })
     expect(callsTo(fetchMock, SESSION).map(csrfHeader)).toEqual([
       "csrf-token-1",
       "csrf-token-2",
@@ -242,7 +252,7 @@ describe("LoginPage", () => {
   })
 
   it("shows a loading button and sends one request however often it is submitted", async () => {
-    const fetchMock = stubFetch(SIGNED_OUT, LOGGED_IN, SIGNED_IN)
+    const fetchMock = stubFetch(NOT_STARTED, SIGNED_OUT, LOGGED_IN, SIGNED_IN)
     const reply = fetchMock.getMockImplementation()!
     let release!: () => void
     fetchMock.mockImplementation(async (path, init) => {
@@ -258,7 +268,7 @@ describe("LoginPage", () => {
     await user.dblClick(pending)
 
     await act(async () => release())
-    await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    await screen.findByRole("heading", { name: APPLY_HEADING })
     expect(callsTo(fetchMock, SESSION)).toHaveLength(1)
   })
 

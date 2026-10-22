@@ -5,6 +5,14 @@ import { describe, expect, it } from "vitest"
 import { callsTo, csrfHeader, stubFetch } from "@/test/fetch"
 import { renderRoute } from "@/test/render"
 
+// /apply also loads the application; a 404 is "not started", which shows the start screen.
+const NOT_STARTED = {
+  path: "/api/v1/membership/application",
+  status: 404,
+  body: { error: "not_found" },
+}
+const APPLY_HEADING = "Complete your membership application"
+
 const PATH = "/api/v1/auth/password_resets"
 const SESSION = "/api/v1/auth/session"
 const PASSWORD = "correct horse battery"
@@ -56,13 +64,15 @@ describe("ResetPasswordPage", () => {
 
   it("forgets a signed-in user, so sign in shows the form and uses the rotated CSRF token", async () => {
     const fetchMock = stubFetch(
+      NOT_STARTED,
+      NOT_STARTED,
       { status: 200, body: { user: USER } },
       RESET,
       { status: 401, body: { error: "unauthenticated" } },
       { status: 201, body: { user: USER, csrf_token: "after-login" } }
     )
     const router = await renderRoute("/apply")
-    await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    await screen.findByRole("heading", { name: APPLY_HEADING })
     const visited: string[] = []
     router.subscribe((state) => visited.push(state.location.pathname))
 
@@ -76,8 +86,18 @@ describe("ResetPasswordPage", () => {
     expect(visited).not.toContain("/apply")
     await user.type(screen.getByLabelText("Work Email Address"), USER.email)
     await user.type(screen.getByLabelText("Password"), PASSWORD)
+    // The reset also dropped the cached application: /apply must load it again from Rails.
+    const seen: string[] = []
+    const observer = new MutationObserver(() =>
+      seen.push(document.body.textContent ?? "")
+    )
+    observer.observe(document.body, { childList: true, subtree: true })
     await user.click(screen.getByRole("button", { name: /Sign In/ }))
-    await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    await screen.findByRole("heading", { name: APPLY_HEADING })
+    observer.disconnect()
+    expect(
+      seen.some((text) => text.includes("Loading your application…"))
+    ).toBe(true)
     const [login] = callsTo(fetchMock, SESSION)
     expect(csrfHeader(login)).toBe("rotated")
   })

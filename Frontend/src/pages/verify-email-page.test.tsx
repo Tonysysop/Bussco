@@ -5,6 +5,14 @@ import { describe, expect, it, vi } from "vitest"
 import { callsTo, csrfHeader, json, stubFetch } from "@/test/fetch"
 import { renderRoute } from "@/test/render"
 
+// /apply also loads the application; a 404 is "not started", which shows the start screen.
+const NOT_STARTED = {
+  path: "/api/v1/membership/application",
+  status: 404,
+  body: { error: "not_found" },
+}
+const APPLY_HEADING = "Complete your membership application"
+
 const PATH = "/api/v1/auth/email_verification"
 const USER = { id: 1, full_name: "Ada Obi", email: "ada@example.com" }
 
@@ -24,6 +32,7 @@ async function tick(seconds: number) {
 describe("VerifyEmailPage", () => {
   it("verifies the code, then shows the signed-in user from /me", async () => {
     const fetchMock = stubFetch(
+      NOT_STARTED,
       {
         status: 200,
         body: { email_verified: true, user: USER, csrf_token: "rotated" },
@@ -38,7 +47,7 @@ describe("VerifyEmailPage", () => {
     await user.click(screen.getByRole("button", { name: "Verify Email" }))
 
     expect(
-      await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+      await screen.findByRole("heading", { name: APPLY_HEADING })
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/apply")
     const [call] = callsTo(fetchMock, PATH, "PATCH")
