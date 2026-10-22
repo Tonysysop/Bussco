@@ -141,7 +141,13 @@ export function BackToSignIn() {
 
 // What a page shows until meQuery answers. A network or server failure isn't proof of being
 // signed out, so it offers a retry instead of the page's form.
-export function SessionStatus({ me }: { me: UseQueryResult }) {
+export function SessionStatus({
+  me,
+  label = "Checking your sign-in…",
+}: {
+  me: UseQueryResult
+  label?: string
+}) {
   return me.isError ? (
     <div className="flex flex-col gap-4">
       <Alert variant="destructive">
@@ -159,7 +165,7 @@ export function SessionStatus({ me }: { me: UseQueryResult }) {
     </div>
   ) : (
     <p role="status" className="text-center text-sm text-gray-600">
-      Checking your sign-in…
+      {label}
     </p>
   )
 }

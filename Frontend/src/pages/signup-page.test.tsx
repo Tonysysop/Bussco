@@ -5,6 +5,14 @@ import { describe, expect, it } from "vitest"
 import { callsTo, csrfHeader, json, stubFetch } from "@/test/fetch"
 import { renderRoute } from "@/test/render"
 
+// /apply also loads the application; a 404 is "not started", which shows the start screen.
+const NOT_STARTED = {
+  path: "/api/v1/membership/application",
+  status: 404,
+  body: { error: "not_found" },
+}
+const APPLY_HEADING = "Complete your membership application"
+
 const TOKEN = "csrf-token-1"
 const FILLED = {
   full_name: "  Ada Obi ",
@@ -289,11 +297,11 @@ describe("SignupPage", () => {
       status: 200,
       body: { user: { id: 1, full_name: "Ada Obi", email: "ada@example.com" } },
     }
-    const fetchMock = stubFetch(signedIn, signedIn)
+    const fetchMock = stubFetch(NOT_STARTED, signedIn, signedIn)
     const router = await renderRoute("/signup")
 
     expect(
-      await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+      await screen.findByRole("heading", { name: APPLY_HEADING })
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe("/apply")
     expect(registrationCalls(fetchMock)).toHaveLength(0)

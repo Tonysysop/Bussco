@@ -32,7 +32,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { ApiError, apiErrorMessage, apiPatch, meQuery } from "@/lib/api"
+import { ApiError, apiErrorMessage, apiPatch, forgetSession } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { resetPasswordSchema, type ResetPasswordInput } from "@/lib/validation"
 
@@ -65,7 +65,7 @@ export function ResetPasswordPage() {
     // Rails revoked every login, this browser's included, and api.ts has adopted the rotated CSRF
     // token. A cached user would send /login straight on to /apply.
     onSuccess: () => {
-      queryClient.setQueryData(meQuery.queryKey, () => null)
+      forgetSession(queryClient)
       setValues({ password: "", confirmation: "" })
     },
     // Rails' password rules failed: the authorization stays usable for another try.

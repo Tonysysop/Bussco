@@ -1,0 +1,549 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_blank" name="shell-type"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;family=Source+Sans+3:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          primary: "#9E1B22",
+          "primary-dark": "#7A1218",
+          "primary-light": "#FFF1F2",
+          "bussco-gold": "#F2B705",
+          "bussco-amber": "#B45309",
+          surface: "#F8F9FA",
+          "surface-card": "#FFFFFF",
+          "surface-subtle": "#F4F5F7"
+        },
+        fontFamily: {
+          sans: ['"Source Sans 3"', 'sans-serif'],
+          heading: ['"Public Sans"', 'sans-serif']
+        }
+      }
+    }
+  };</script></head><body class="bg-[#F8F9FA] text-gray-800 font-sans min-h-screen flex flex-col justify-between selection:bg-[#9E1B22] selection:text-white">
+<!-- Top Banner Bar / Toast Notification -->
+<div aria-live="polite" class="fixed top-5 right-5 z-50 transform -translate-y-28 opacity-0 transition-all duration-300 ease-out flex items-center gap-3 bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-xl max-w-md border border-gray-700 pointer-events-none" id="toastNotification">
+<span class="material-symbols-outlined text-[#F2B705] text-2xl" id="toastIcon">check_circle</span>
+<div class="flex flex-col text-left">
+<span class="text-sm font-semibold tracking-wide" id="toastTitle">Draft Saved</span>
+<span class="text-xs text-gray-300 mt-0.5" id="toastDesc">All details are safely stored.</span>
+</div>
+</div>
+<!-- Modal for Terms & Constitution Review -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden" id="docModal">
+<div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[85vh]">
+<div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/70">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[#9E1B22]">menu_book</span>
+<h3 class="font-heading font-bold text-gray-900 text-base" id="modalDocTitle">BUA Cooperative Bye-Laws</h3>
+</div>
+<button class="text-gray-400 hover:text-gray-700 p-1 rounded-lg transition" onclick="closeDocModal()" type="button">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+</div>
+<div class="p-6 overflow-y-auto space-y-3 text-sm text-gray-600 leading-relaxed font-sans" id="modalDocBody">
+<p class="font-medium text-gray-800">BUA Senior Staff Multipurpose Cooperative Society (BUSSCO)</p>
+<p>1. Membership is open to all confirmed senior staff members of BUA Group and its operating subsidiaries.</p>
+<p>2. Monthly deductions are processed through payroll upon official ratification and notification by the cooperative secretariat.</p>
+<p>3. Members agree to regular monthly savings contributions as designated and abide by all financial protocols, loan regulations, and dividend guidelines established under BUSSCO bye-laws.</p>
+<p>4. Dashboard access and member voting rights will become active immediately following final formal membership approval.</p>
+</div>
+<div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+<button class="px-5 py-2 rounded-lg bg-[#9E1B22] text-white text-xs font-semibold hover:bg-[#7A1218] transition" onclick="closeDocModal()" type="button">
+        I Understand
+      </button>
+</div>
+</div>
+</div>
+<main class="w-full flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
+<div class="w-full max-w-[820px] space-y-6">
+<!-- Header & Brand Card -->
+<div class="bg-white rounded-xl shadow-xs border border-gray-200 p-5 sm:p-7 relative overflow-hidden">
+<!-- Top Crimson Accent Accent Line -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#9E1B22] via-[#B90014] to-[#F2B705]"></div>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+<!-- BUSSCO Official Logo -->
+<div class="flex items-center gap-3">
+<div class="h-12 w-auto max-w-[210px] sm:max-w-[240px] flex items-center">
+<img alt="BUA Senior Staff Multipurpose Cooperative Society" class="h-12 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAboy7NI0TdIZWMhHHXgWERoJ5egxXT8pwo2zkA-1fpPTcmrWbNiR-9ev_KTIoN5ClemCVZMUu3bkRY-IostS3aQMPBdat8BSR4jTMj5YLz_RES1j44OTpxqhM_2YS9SZ-NjZH-7VfwOWG1X8vW38AXm8q-f5WJ_ik4vHE-cDMm2nSzVSYtYWqEr8OoRsxK9ve-RueRJ8PVMlpIgg_R9LKFwDjeuA_J0kMnEKcfK1jXzGyDuqN2XFB3bg5RlOSqmGltOuo">
+</div>
+</div>
+<!-- Status Badges -->
+<div class="flex items-center gap-2 self-start sm:self-center">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
+<span class="w-2 h-2 rounded-full bg-[#F2B705] animate-pulse"></span>
+            Application Draft
+          </span>
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+<span class="material-symbols-outlined text-[14px]">check</span>
+            Email verified
+          </span>
+</div>
+</div>
+<!-- Stepper Status & Progress Bar -->
+<div class="pt-5 space-y-2.5">
+<div class="flex items-center justify-between text-xs">
+<span class="font-heading font-bold text-[#9E1B22] uppercase tracking-wider">
+            Step 5 of 5: Review &amp; Submit
+          </span>
+<span class="text-gray-500 font-medium">Ready to submit</span>
+</div>
+<!-- 5-Step Progress Indicators -->
+<div class="grid grid-cols-5 gap-2">
+<!-- Step 1: Employment Details -->
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full bg-[#9E1B22] rounded-full"></div>
+<div class="flex items-center gap-1 text-[11px] font-medium text-[#9E1B22]">
+<span class="material-symbols-outlined text-[13px] font-bold">check</span>
+<span class="hidden md:inline">Employment</span>
+</div>
+</div>
+<!-- Step 2: Personal Details -->
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full bg-[#9E1B22] rounded-full"></div>
+<div class="flex items-center gap-1 text-[11px] font-medium text-[#9E1B22]">
+<span class="material-symbols-outlined text-[13px] font-bold">check</span>
+<span class="hidden md:inline">Personal</span>
+</div>
+</div>
+<!-- Step 3: Next of Kin -->
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full bg-[#9E1B22] rounded-full"></div>
+<div class="flex items-center gap-1 text-[11px] font-medium text-[#9E1B22]">
+<span class="material-symbols-outlined text-[13px] font-bold">check</span>
+<span class="hidden md:inline">Next of kin</span>
+</div>
+</div>
+<!-- Step 4: Contributions -->
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full bg-[#9E1B22] rounded-full"></div>
+<div class="flex items-center gap-1 text-[11px] font-medium text-[#9E1B22]">
+<span class="material-symbols-outlined text-[13px] font-bold">check</span>
+<span class="hidden md:inline">Contributions</span>
+</div>
+</div>
+<!-- Step 5: Review (Active) -->
+<div class="flex flex-col gap-1">
+<div class="h-1.5 w-full bg-[#9E1B22] rounded-full ring-2 ring-[#9E1B22]/30"></div>
+<div class="flex items-center gap-1 text-[11px] font-bold text-gray-900">
+<span class="w-1.5 h-1.5 rounded-full bg-[#9E1B22]"></span>
+<span class="hidden md:inline">Review</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Page Title & Subtitle -->
+<div class="pt-6">
+<h1 class="font-heading text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+          Review your application
+        </h1>
+<p class="text-sm sm:text-base text-gray-500 mt-1 font-sans">
+          Check your details before submitting.
+        </p>
+</div>
+</div>
+<!-- 4 CORE REVIEW CARDS -->
+<div class="space-y-4">
+<!-- CARD 1: Employment Details -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-xs p-5 sm:p-6 transition hover:border-gray-300">
+<div class="flex items-center justify-between pb-3.5 mb-4 border-b border-gray-100">
+<div class="flex items-center gap-2.5">
+<span class="w-6 h-6 rounded-md bg-[#9E1B22]/10 text-[#9E1B22] text-xs font-bold flex items-center justify-center">1</span>
+<h2 class="font-heading text-sm font-bold tracking-wider uppercase text-gray-900">
+              Employment Details
+            </h2>
+</div>
+<button class="text-[#9E1B22] hover:text-[#7A1218] text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-rose-50 transition" onclick="editSection(1, 'Employment Details')" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Edit section</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Staff / SAP ID</p>
+<p class="text-gray-900 font-medium font-mono mt-0.5" id="data_sapId">SAP-849201</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Business Unit / Subsidiary</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_businessUnit">BUA Foods Plc</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Department</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_department">Corporate Finance &amp; Treasury</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Job Title / Designation</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_designation">Senior Financial Analyst</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Work Email Address</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_workEmail">a.olawale@buagroup.com</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Date of Employment / Confirmation</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_employmentDate">15/03/2021 (Confirmed Staff)</p>
+</div>
+</div>
+</div>
+<!-- CARD 2: Personal Details -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-xs p-5 sm:p-6 transition hover:border-gray-300">
+<div class="flex items-center justify-between pb-3.5 mb-4 border-b border-gray-100">
+<div class="flex items-center gap-2.5">
+<span class="w-6 h-6 rounded-md bg-[#9E1B22]/10 text-[#9E1B22] text-xs font-bold flex items-center justify-center">2</span>
+<h2 class="font-heading text-sm font-bold tracking-wider uppercase text-gray-900">
+              Personal Details
+            </h2>
+</div>
+<button class="text-[#9E1B22] hover:text-[#7A1218] text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-rose-50 transition" onclick="editSection(2, 'Personal Details')" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Edit section</span>
+</button>
+</div>
+<div class="flex flex-col sm:flex-row gap-5 items-start">
+<!-- Uploaded Passport Photo Thumbnail (72x72) -->
+<div class="shrink-0 flex flex-col items-center gap-1.5">
+<div class="w-[72px] h-[72px] rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shadow-xs">
+<img alt="Adebayo Olawale Passport" class="w-full h-full object-cover" data-alt="Crisp professional headshot of an African corporate executive male wearing formal business attire with clean studio lighting and neutral architectural grey backdrop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxZ5cfToO-JrPBUleioZKLC_TvUFnaa5h3VukHvw6vTcjjgjUh_QcTRIKAJB1aFXd05utYKUUrb3b6A-esNwOfjs8JN3jcSiR2y5VXVExb80k-Xi4fnSmDyM21vWvtXl9v0KyYma3jlixOjN1escQ4Kk95dasflnOCgFjknSpO0cJ9b5I-UekP3qFnoZO7maxHzjSv8Gt7a2sZO00TYAGKeEZZkAGQ8SouV7OEnAK1">
+</div>
+<span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Photo ID</span>
+</div>
+<!-- Two-column details grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm w-full">
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Full Name</p>
+<p class="text-gray-900 font-semibold mt-0.5" id="data_fullName">Adebayo Olawale</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Date of Birth</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_dob">14/05/1988</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Sex</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_sex">Male</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Marital Status</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_maritalStatus">Married</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Phone Number</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_phone">+234 800 123 4567</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Email Address</p>
+<div class="flex items-center gap-1.5 mt-0.5">
+<p class="text-gray-900 font-medium" id="data_personalEmail">a.olawale@buagroup.com</p>
+<span class="inline-flex items-center text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-medium">Verified</span>
+</div>
+</div>
+<div class="sm:col-span-2">
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Residential / Permanent Address</p>
+<p class="text-gray-900 font-medium mt-0.5 leading-relaxed" id="data_resAddress">Plot 14, Victoria Island, Lagos State</p>
+</div>
+</div>
+</div>
+</div>
+<!-- CARD 3: Next of Kin -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-xs p-5 sm:p-6 transition hover:border-gray-300">
+<div class="flex items-center justify-between pb-3.5 mb-4 border-b border-gray-100">
+<div class="flex items-center gap-2.5">
+<span class="w-6 h-6 rounded-md bg-[#9E1B22]/10 text-[#9E1B22] text-xs font-bold flex items-center justify-center">3</span>
+<h2 class="font-heading text-sm font-bold tracking-wider uppercase text-gray-900">
+              Next of Kin
+            </h2>
+</div>
+<button class="text-[#9E1B22] hover:text-[#7A1218] text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-rose-50 transition" onclick="editSection(3, 'Next of Kin')" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Edit section</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 text-sm">
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Full Name</p>
+<p class="text-gray-900 font-semibold mt-0.5" id="data_nokName">Folashade Olawale</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Relationship</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_nokRel">Spouse</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Phone Number</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_nokPhone">+234 802 987 6543</p>
+</div>
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Email Address</p>
+<p class="text-gray-900 font-medium mt-0.5" id="data_nokEmail">folashade.olawale@gmail.com</p>
+</div>
+<div class="sm:col-span-2">
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Residential Address</p>
+<p class="text-gray-900 font-medium mt-0.5 leading-relaxed" id="data_nokAddress">Plot 14, Victoria Island, Lagos State</p>
+</div>
+</div>
+</div>
+<!-- CARD 4: Contributions & Fees -->
+<div class="bg-white rounded-xl border border-gray-200 shadow-xs p-5 sm:p-6 transition hover:border-gray-300">
+<div class="flex items-center justify-between pb-3.5 mb-4 border-b border-gray-100">
+<div class="flex items-center gap-2.5">
+<span class="w-6 h-6 rounded-md bg-[#9E1B22]/10 text-[#9E1B22] text-xs font-bold flex items-center justify-center">4</span>
+<h2 class="font-heading text-sm font-bold tracking-wider uppercase text-gray-900">
+              Contributions &amp; Fees
+            </h2>
+</div>
+<button class="text-[#9E1B22] hover:text-[#7A1218] text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-rose-50 transition" onclick="editSection(4, 'Contributions &amp; Fees')" type="button">
+<span class="material-symbols-outlined text-[15px]">edit</span>
+<span>Edit section</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<!-- Monthly Contribution Box -->
+<div class="p-4 rounded-xl bg-gray-50/80 border border-gray-200/80 flex flex-col justify-between">
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Proposed Monthly Savings Contribution</p>
+<p class="font-heading text-2xl font-bold text-[#9E1B22] mt-1" id="data_monthlyAmt">₦50,000.00</p>
+</div>
+<p class="text-xs text-gray-500 mt-2">Deducted monthly via payroll deduction</p>
+</div>
+<!-- Registration Fee Box -->
+<div class="p-4 rounded-xl bg-gray-50/80 border border-gray-200/80 flex flex-col justify-between">
+<div>
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">One-Time Registration / Entrance Fee</p>
+<p class="font-heading text-2xl font-bold text-gray-900 mt-1" id="data_regFee">₦5,000.00</p>
+</div>
+<p class="text-xs text-gray-500 mt-2">One-time deduction upon membership approval</p>
+</div>
+<!-- Commencement / Start Date -->
+<div class="sm:col-span-2 pt-1">
+<p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Proposed Commencement / Start Date</p>
+<p class="text-sm font-semibold text-gray-900 mt-0.5" id="data_commenceDate">November 2026 Payroll</p>
+</div>
+</div>
+<!-- Clarification Note -->
+<div class="mt-4 p-3 rounded-lg bg-amber-50/70 border border-amber-200/60 flex items-start gap-2.5 text-xs text-amber-900">
+<span class="material-symbols-outlined text-base text-[#F2B705] mt-0.5 shrink-0" style="font-variation-settings: 'FILL' 1;">info</span>
+<p class="leading-relaxed">
+            Please note: Deductions begin only after formal membership approval and subsequent payroll inclusion. No automatic debit occurs prior to validation.
+          </p>
+</div>
+</div>
+</div>
+<!-- DECLARATIONS & FORM SUBMISSION -->
+<form class="space-y-5 pt-2" id="reviewSubmissionForm" onsubmit="handleReviewSubmit(event)">
+<!-- Declarations Box -->
+<div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 shadow-xs space-y-4">
+<h3 class="font-heading text-xs font-bold uppercase tracking-wider text-gray-900">
+          Applicant Declarations &amp; Acknowledgments
+        </h3>
+<!-- Checkbox 1: Accuracy (unchecked by default) -->
+<label class="flex items-start gap-3 cursor-pointer group select-none">
+<input class="mt-1 w-4 h-4 rounded text-[#9E1B22] focus:ring-[#9E1B22] accent-[#9E1B22] cursor-pointer shrink-0 border-gray-300" id="declTrueInfo" type="checkbox">
+<span class="text-sm text-gray-700 leading-snug group-hover:text-gray-900">
+            I declare that all information provided in this application is true, accurate, and complete to the best of my knowledge.
+          </span>
+</label>
+<!-- Checkbox 2: Bye-laws & Terms (unchecked by default) -->
+<label class="flex items-start gap-3 cursor-pointer group select-none">
+<input class="mt-1 w-4 h-4 rounded text-[#9E1B22] focus:ring-[#9E1B22] accent-[#9E1B22] cursor-pointer shrink-0 border-gray-300" id="declByeLaws" type="checkbox">
+<span class="text-sm text-gray-700 leading-snug group-hover:text-gray-900">
+            I agree to abide by the 
+            <button class="text-[#9E1B22] font-semibold underline hover:text-[#7A1218] inline cursor-pointer" onclick="openDocModal('BUA Cooperative Bye-Laws'); event.preventDefault();" type="button">Bye-laws</button>, 
+            rules, and 
+            <button class="text-[#9E1B22] font-semibold underline hover:text-[#7A1218] inline cursor-pointer" onclick="openDocModal('Constitution of BUSSCO'); event.preventDefault();" type="button">Constitution</button> 
+            of the BUA Senior Staff Multipurpose Cooperative Society, and accept the 
+            <button class="text-[#9E1B22] font-semibold underline hover:text-[#7A1218] inline cursor-pointer" onclick="openDocModal('Terms of Membership'); event.preventDefault();" type="button">terms of membership</button>.
+          </span>
+</label>
+</div>
+<!-- Action Buttons Bar -->
+<div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+<!-- Back Button -->
+<button class="w-full sm:w-auto px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition font-heading text-xs font-semibold inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer" id="btnBackStep" onclick="goBackStep()" type="button">
+<span class="material-symbols-outlined text-base">arrow_back</span>
+<span>Back</span>
+</button>
+<div class="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+<!-- Save & Exit Button -->
+<button class="w-full sm:w-auto px-5 py-2.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 transition font-heading text-xs font-semibold inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer" id="btnSaveExit" onclick="saveAndExit()" type="button">
+<span class="material-symbols-outlined text-base">bookmark</span>
+<span>Save &amp; Exit</span>
+</button>
+<!-- Submit Application Primary Button -->
+<button class="w-full sm:w-auto px-7 py-2.5 rounded-lg bg-[#9E1B22] hover:bg-[#7A1218] text-white transition font-heading text-xs sm:text-sm font-bold shadow-sm inline-flex items-center justify-center gap-2 group cursor-pointer focus:ring-2 focus:ring-[#9E1B22] focus:ring-offset-2" id="btnSubmitApp" type="submit">
+<span class="hidden animate-spin material-symbols-outlined text-base" id="spinnerIcon">progress_activity</span>
+<span id="submitLabel">Submit Application</span>
+<span class="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform" id="sendIcon">send</span>
+</button>
+</div>
+</div>
+</form>
+<!-- Submission State Result Notice Container -->
+<div class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-emerald-950 space-y-2" id="submissionSuccessBanner">
+<div class="flex items-center gap-2.5 font-heading font-bold text-base text-emerald-900">
+<span class="material-symbols-outlined text-emerald-600">verified</span>
+<span>Application Submitted for Cooperative Review</span>
+</div>
+<p class="text-sm text-emerald-800 leading-relaxed font-sans">
+        Your application (Ref: <strong>BUSSCO-2026-08492</strong>) has been formally received and is undergoing review. Please note that dashboard access remains unavailable until your membership is officially approved. A confirmation receipt has been sent to <strong>a.olawale@buagroup.com</strong>.
+      </p>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full border-t border-gray-200 bg-white py-6 mt-12">
+<div class="max-w-[820px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-sans text-center sm:text-left">
+<p>© 2026 BUA Senior Staff Multipurpose Cooperative Society (BUSSCO). All rights reserved.</p>
+<div class="flex items-center gap-4">
+<button class="hover:text-[#9E1B22] transition underline-offset-2 hover:underline" onclick="openDocModal('Terms of Membership')">Terms of Membership</button>
+<span>•</span>
+<button class="hover:text-[#9E1B22] transition underline-offset-2 hover:underline" onclick="openDocModal('Privacy Policy')">Privacy Policy</button>
+<span>•</span>
+<a class="hover:text-[#9E1B22] transition underline-offset-2 hover:underline" href="mailto:cooperative@buagroup.com">Contact Secretariat</a>
+</div>
+</div>
+</footer>
+<script>
+  // Initial LocalStorage Data Hydration / Retention
+  const DEFAULT_APP_STATE = {
+    sapId: 'SAP-849201',
+    businessUnit: 'BUA Foods Plc',
+    department: 'Corporate Finance & Treasury',
+    designation: 'Senior Financial Analyst',
+    workEmail: 'a.olawale@buagroup.com',
+    employmentDate: '15/03/2021 (Confirmed Staff)',
+    fullName: 'Adebayo Olawale',
+    dob: '14/05/1988',
+    sex: 'Male',
+    maritalStatus: 'Married',
+    phone: '+234 800 123 4567',
+    personalEmail: 'a.olawale@buagroup.com',
+    resAddress: 'Plot 14, Victoria Island, Lagos State',
+    nokName: 'Folashade Olawale',
+    nokRel: 'Spouse',
+    nokPhone: '+234 802 987 6543',
+    nokEmail: 'folashade.olawale@gmail.com',
+    nokAddress: 'Plot 14, Victoria Island, Lagos State',
+    monthlyAmt: '₦50,000.00',
+    regFee: '₦5,000.00',
+    commenceDate: 'November 2026 Payroll'
+  };
+
+  // Ensure persistent state in localStorage
+  function initOrLoadState() {
+    try {
+      let saved = localStorage.getItem('bussco_app_data');
+      if (!saved) {
+        localStorage.setItem('bussco_app_data', JSON.stringify(DEFAULT_APP_STATE));
+      } else {
+        const parsed = JSON.parse(saved);
+        for (const [key, val] of Object.entries(parsed)) {
+          const el = document.getElementById('data_' + key);
+          if (el) el.innerText = val;
+        }
+      }
+    } catch (e) {
+      console.warn('LocalStorage unavailable:', e);
+    }
+  }
+
+  initOrLoadState();
+
+  // Toast Notification System
+  function showToast(title, desc, isError = false) {
+    const toast = document.getElementById('toastNotification');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastDesc = document.getElementById('toastDesc');
+    const toastIcon = document.getElementById('toastIcon');
+
+    toastTitle.innerText = title;
+    toastDesc.innerText = desc;
+
+    if (isError) {
+      toastIcon.innerText = 'error';
+      toastIcon.className = 'material-symbols-outlined text-rose-400 text-2xl';
+    } else {
+      toastIcon.innerText = 'check_circle';
+      toastIcon.className = 'material-symbols-outlined text-[#F2B705] text-2xl';
+    }
+
+    toast.classList.remove('-translate-y-28', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('-translate-y-28', 'opacity-0');
+    }, 4500);
+  }
+
+  // Edit Link Action (preserves retained data and simulates navigating back)
+  function editSection(stepNumber, sectionName) {
+    showToast(`Returning to Step ${stepNumber}`, `Opening ${sectionName} editor with your saved data preserved.`);
+  }
+
+  function goBackStep() {
+    showToast('Navigating Back', 'Returning to Step 4 (Contributions & Fees) with all changes preserved.');
+  }
+
+  function saveAndExit() {
+    const btn = document.getElementById('btnSaveExit');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Saving...</span>';
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      showToast('Draft Saved Successfully', 'Your application state is secure. You can return at any time.');
+    }, 600);
+  }
+
+  // Interactive Document Modal
+  function openDocModal(docTitle) {
+    document.getElementById('modalDocTitle').innerText = docTitle;
+    document.getElementById('docModal').classList.remove('hidden');
+  }
+
+  function closeDocModal() {
+    document.getElementById('docModal').classList.add('hidden');
+  }
+
+  // Handle Form Submission
+  function handleReviewSubmit(e) {
+    e.preventDefault();
+
+    const chk1 = document.getElementById('declTrueInfo');
+    const chk2 = document.getElementById('declByeLaws');
+
+    if (!chk1.checked || !chk2.checked) {
+      showToast('Declaration Required', 'Please check both declaration boxes before submitting your application.', true);
+      return;
+    }
+
+    const btn = document.getElementById('btnSubmitApp');
+    const label = document.getElementById('submitLabel');
+    const spinner = document.getElementById('spinnerIcon');
+    const sendIcon = document.getElementById('sendIcon');
+    const backBtn = document.getElementById('btnBackStep');
+    const saveBtn = document.getElementById('btnSaveExit');
+
+    // Loading State
+    btn.disabled = true;
+    backBtn.disabled = true;
+    saveBtn.disabled = true;
+
+    label.innerText = 'Submitting application...';
+    spinner.classList.remove('hidden');
+    sendIcon.classList.add('hidden');
+    btn.classList.add('opacity-90');
+
+    setTimeout(() => {
+      spinner.classList.add('hidden');
+      label.innerText = 'Submitted';
+      btn.classList.replace('bg-[#9E1B22]', 'bg-emerald-700');
+      btn.classList.replace('hover:bg-[#7A1218]', 'hover:bg-emerald-800');
+
+      // Unhide confirmation banner
+      document.getElementById('submissionSuccessBanner').classList.remove('hidden');
+      document.getElementById('submissionSuccessBanner').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      showToast('Application Submitted!', 'Submission initiates cooperative review. Dashboard access remains unavailable until membership is officially approved.');
+    }, 1800);
+  }
+</script>
+</body></html>

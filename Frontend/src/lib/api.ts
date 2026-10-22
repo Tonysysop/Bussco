@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query"
+import { queryOptions, type QueryClient } from "@tanstack/react-query"
 
 export class ApiError extends Error {
   status: number
@@ -56,20 +56,61 @@ export type Me = {
   }
 }
 
+// GET that resolves to null for the one status meaning "there is none", rather than erroring.
+async function getOrNull<T>(path: string, noneStatus: number) {
+  try {
+    return (await apiGet(path)) as T
+  } catch (error) {
+    if (error instanceof ApiError && error.status === noneStatus) return null
+    throw error
+  }
+}
+
+// Every cached application lives under this key (see applicationQuery).
+const MEMBERSHIP_KEY = ["membership"]
+
 // A 401 means signed out: it resolves to null, replacing any cached user, rather than erroring.
 export const meQuery = queryOptions({
   queryKey: ["auth", "me"],
-  queryFn: async (): Promise<Me | null> => {
-    try {
-      return (await apiGet("/api/v1/auth/me")) as Me
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) return null
-      throw error
-    }
+  queryFn: async ({ client }) => {
+    const me = await getOrNull<Me>("/api/v1/auth/me", 401)
+    // Wherever Rails reports the session over, no cached application may outlive it.
+    if (!me) client.removeQueries({ queryKey: MEMBERSHIP_KEY })
+    return me
   },
   // Other failures get a Try again button.
   retry: false,
 })
+
+export const APPLICATION_PATH = "/api/v1/membership/application"
+
+// Only the fields the frontend reads (Backend/docs/membership/application.md).
+export type MembershipApplication = {
+  application: { submitted_at: string | null; lock_version: number }
+  applicant: { full_name: string; email: string; membership_status: string }
+  // null once submitted; current_stage is the first incomplete stage, or "review".
+  progress: {
+    stages: Record<string, "complete" | "incomplete">
+    current_stage: string
+    ready_to_submit: boolean
+  } | null
+}
+
+// A 404 means never started. Keyed by the /me user id: on a shared computer the next person to sign
+// in must never be shown the previous person's cached application.
+export const applicationQuery = (userId: number) =>
+  queryOptions({
+    queryKey: [...MEMBERSHIP_KEY, "application", userId],
+    queryFn: () => getOrNull<MembershipApplication>(APPLICATION_PATH, 404),
+    retry: false,
+  })
+
+// Signed out without asking /me (an application 401, password reset, later logout): forget the user
+// and every cached application, so none of it outlives the session in memory.
+export function forgetSession(queryClient: QueryClient) {
+  queryClient.setQueryData(meQuery.queryKey, () => null)
+  queryClient.removeQueries({ queryKey: MEMBERSHIP_KEY })
+}
 
 async function send(method: string, path: string, data: unknown) {
   try {
