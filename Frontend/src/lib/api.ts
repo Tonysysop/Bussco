@@ -117,10 +117,18 @@ export type PersonalFields = {
   home_address: string | null
 }
 
+export type NextOfKinFields = {
+  next_of_kin_name: string | null
+  next_of_kin_relationship: string | null
+  next_of_kin_phone: string | null
+  next_of_kin_address: string | null
+}
+
 // Only the fields the frontend reads (Backend/docs/membership/application.md).
 export type MembershipApplication = {
   application: EmploymentFields &
-    PersonalFields & {
+    PersonalFields &
+    NextOfKinFields & {
       passport_photo: {
         content_type: string
         byte_size: number
@@ -203,7 +211,12 @@ export function forgetSession(queryClient: QueryClient) {
 }
 
 // FormData goes as multipart, with the boundary the browser sets; anything else as JSON.
-async function send(method: string, path: string, data: unknown) {
+async function send(
+  method: string,
+  path: string,
+  data: unknown,
+  headers: Record<string, string> = {}
+) {
   const form = data instanceof FormData
   try {
     const body = await request(path, {
@@ -211,6 +224,7 @@ async function send(method: string, path: string, data: unknown) {
       headers: {
         ...(form ? {} : { "Content-Type": "application/json" }),
         "X-CSRF-Token": await fetchCsrfToken(),
+        ...headers,
       },
       body: form ? data : JSON.stringify(data),
     })
@@ -229,23 +243,43 @@ export const apiPost = (path: string, data: unknown) => send("POST", path, data)
 export const apiPatch = (path: string, data: unknown) =>
   send("PATCH", path, data)
 
-export const startApplication = async (user: Applicant) =>
-  forApplicant(
-    (await apiPost(APPLICATION_PATH, {})) as MembershipApplication,
-    user
-  )
+// Every application write names the applicant it is meant for. After a sign-in changes in another
+// tab, Rails refuses it (409 identity_mismatch) instead of writing into someone else's application;
+// that refusal, like an answer for the wrong applicant, is an IdentityMismatch.
+async function writeFor(
+  user: Applicant,
+  write: (headers: Record<string, string>) => Promise<unknown>
+) {
+  try {
+    const data = await write({ "X-Applicant-Id": String(user.id) })
+    return forApplicant(data as MembershipApplication, user)
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      apiErrorCode(error) === "identity_mismatch"
+    )
+      throw new IdentityMismatch("Write refused for a different sign-in")
+    throw error
+  }
+}
+
+export const startApplication = (user: Applicant) =>
+  writeFor(user, (headers) => send("POST", APPLICATION_PATH, {}, headers))
 
 // One write to the application, sent with the lock_version the form's values were loaded with (never
 // a newer cached one, which would overwrite changes the form never saw). Only Rails' answer updates
 // the cache.
 function useApplicationWrite<Variables>(
   user: Applicant,
-  write: (variables: Variables) => Promise<unknown>
+  write: (
+    variables: Variables,
+    headers: Record<string, string>
+  ) => Promise<unknown>
 ) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (variables: Variables) =>
-      forApplicant((await write(variables)) as MembershipApplication, user),
+    mutationFn: (variables: Variables) =>
+      writeFor(user, (headers) => write(variables, headers)),
     onSuccess: (data) =>
       queryClient.setQueryData(applicationQuery(user).queryKey, () => data),
     onError: (error) => {
@@ -267,27 +301,32 @@ function useApplicationWrite<Variables>(
 export const useSaveStage = (stage: string, user: Applicant) =>
   useApplicationWrite(
     user,
-    ({
-      version,
-      fields,
-    }: {
-      version: number
-      fields: Record<string, string | null>
-    }) =>
-      apiPatch(`${APPLICATION_PATH}/stages/${stage}`, {
-        lock_version: version,
-        application: fields,
-      })
+    (
+      {
+        version,
+        fields,
+      }: {
+        version: number
+        fields: Record<string, string | null>
+      },
+      headers
+    ) =>
+      send(
+        "PATCH",
+        `${APPLICATION_PATH}/stages/${stage}`,
+        { lock_version: version, application: fields },
+        headers
+      )
   )
 
 export const useUploadPhoto = (user: Applicant) =>
   useApplicationWrite(
     user,
-    ({ version, photo }: { version: number; photo: File }) => {
+    ({ version, photo }: { version: number; photo: File }, headers) => {
       const body = new FormData()
       body.append("photo", photo)
       body.append("lock_version", String(version))
-      return send("PUT", `${APPLICATION_PATH}/passport_photo`, body)
+      return send("PUT", `${APPLICATION_PATH}/passport_photo`, body, headers)
     }
   )
 

@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import {
   fromRailsPhone,
+  nextOfKinErrors,
   personalErrors,
   photoProblem,
   signupSchema,
@@ -241,6 +242,58 @@ describe("photoProblem", () => {
     )
     expect(photoProblem(file("image/gif", 10))).toBe(
       "Passport photograph must be a JPG or PNG image"
+    )
+  })
+})
+
+describe("nextOfKinErrors", () => {
+  const BLANK = {
+    next_of_kin_name: "",
+    next_of_kin_relationship: "",
+    next_of_kin_phone: "",
+    next_of_kin_address: "",
+  }
+  const FILLED = {
+    next_of_kin_name: "Amina Bello",
+    next_of_kin_relationship: "Sibling",
+    next_of_kin_phone: "",
+    next_of_kin_address: "14 Admiralty Way\nLagos",
+  }
+  const errors = (fields: Partial<typeof BLANK>, requireAll = false) =>
+    nextOfKinErrors({ ...BLANK, ...fields }, requireAll).errors
+
+  it("allows an empty draft, and requires everything but the phone to continue", () => {
+    expect(errors({})).toEqual({})
+    expect(Object.keys(errors({}, true)).sort()).toEqual([
+      "next_of_kin_address",
+      "next_of_kin_name",
+      "next_of_kin_relationship",
+    ])
+    expect(nextOfKinErrors(FILLED, true)).toEqual({ errors: {}, data: FILLED })
+  })
+
+  it("applies Rails' limits: no line breaks in the name, 120/50/300 characters, a valid phone", () => {
+    expect(
+      errors({
+        next_of_kin_name: "x".repeat(120),
+        next_of_kin_relationship: "x".repeat(50),
+      })
+    ).toEqual({})
+    expect(errors({ next_of_kin_name: "x".repeat(121) })).toHaveProperty(
+      "next_of_kin_name"
+    )
+    expect(errors({ next_of_kin_name: "Amina\nBello" })).toHaveProperty(
+      "next_of_kin_name"
+    )
+    expect(errors({ next_of_kin_relationship: "x".repeat(51) })).toHaveProperty(
+      "next_of_kin_relationship"
+    )
+    expect(errors({ next_of_kin_address: "x".repeat(301) })).toHaveProperty(
+      "next_of_kin_address"
+    )
+    expect(errors({ next_of_kin_phone: "+2348023456789" })).toEqual({})
+    expect(errors({ next_of_kin_phone: "+12" })).toHaveProperty(
+      "next_of_kin_phone"
     )
   })
 })

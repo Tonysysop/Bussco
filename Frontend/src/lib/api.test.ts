@@ -132,3 +132,31 @@ describe("passportPhotoQuery", () => {
     expect(client.getQueryData(key)).toBeUndefined()
   })
 })
+
+describe("application writes name their applicant", () => {
+  const ADA = { id: 1, email: "ada@example.com" }
+  const APP = "/api/v1/membership/application"
+
+  it("sends the /me user's id with the write", async () => {
+    const { startApplication } = await loadApi()
+    const fetchMock = stubFetch({
+      status: 201,
+      body: {
+        application: {},
+        applicant: { email: ADA.email },
+        progress: null,
+      },
+    })
+    await startApplication(ADA)
+
+    const [call] = callsTo(fetchMock, APP)
+    expect(new Headers(call[1]?.headers).get("X-Applicant-Id")).toBe("1")
+  })
+
+  it("treats Rails refusing a write for another sign-in as an identity mismatch", async () => {
+    const { startApplication, IdentityMismatch } = await loadApi()
+    stubFetch({ status: 409, body: { error: "identity_mismatch" } })
+
+    await expect(startApplication(ADA)).rejects.toBeInstanceOf(IdentityMismatch)
+  })
+})

@@ -88,8 +88,7 @@ const draftText = (label: string, max: number, lineBreaks = false) =>
     .string()
     .trim()
     .refine(
-      (value) =>
-        !(lineBreaks ? /(?![\r\n])\p{Cc}/u : /\p{Cc}/u).test(value),
+      (value) => !(lineBreaks ? /(?![\r\n])\p{Cc}/u : /\p{Cc}/u).test(value),
       `${label} contains characters that aren't allowed`
     )
     .refine(
@@ -252,6 +251,43 @@ export function personalErrors(
     errors.passport_photo = `${PERSONAL_LABELS.passport_photo} can't be blank`
   return { errors, data: result.data }
 }
+
+// Next of kin stage. The phone is optional; the address may keep line breaks.
+export const NEXT_OF_KIN_LABELS = {
+  next_of_kin_name: "Next of kin name",
+  next_of_kin_relationship: "Relationship",
+  next_of_kin_phone: "Contact phone number",
+  next_of_kin_address: "Contact address",
+} as const
+
+export type NextOfKinField = keyof typeof NEXT_OF_KIN_LABELS
+
+const nextOfKinSchema = z.object({
+  next_of_kin_name: draftText(NEXT_OF_KIN_LABELS.next_of_kin_name, 120),
+  next_of_kin_relationship: draftText(
+    NEXT_OF_KIN_LABELS.next_of_kin_relationship,
+    50
+  ),
+  next_of_kin_phone: phone(NEXT_OF_KIN_LABELS.next_of_kin_phone),
+  next_of_kin_address: draftText(
+    NEXT_OF_KIN_LABELS.next_of_kin_address,
+    300,
+    true
+  ),
+})
+
+// The phone must already be in Rails' form (toRailsPhone).
+export const nextOfKinErrors = (
+  input: z.input<typeof nextOfKinSchema>,
+  requireAll: boolean
+) =>
+  stageErrors(
+    nextOfKinSchema,
+    NEXT_OF_KIN_LABELS,
+    ["next_of_kin_name", "next_of_kin_relationship", "next_of_kin_address"],
+    input,
+    requireAll
+  )
 
 // Quick feedback before uploading; Rails checks the file's real type from its first bytes.
 export const PHOTO_MAX_BYTES = 2 * 1024 * 1024
