@@ -59,6 +59,10 @@ describe("VerifyEmailPage", () => {
       await screen.findByRole("heading", { name: "Email verified" })
     ).toBeInTheDocument()
     expect(screen.getByText(/Sign in with your email/)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login"
+    )
     expect(router.state.location.pathname).toBe("/verify-email")
   })
 

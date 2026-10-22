@@ -12,7 +12,7 @@ import {
   Mail,
   User,
 } from "lucide-react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { z } from "zod"
 
 import { AuthLayout } from "@/components/auth-layout"
@@ -284,7 +284,8 @@ export function SignupPage() {
           <Button
             type="submit"
             disabled={registration.isPending}
-            className="h-12 w-full gap-2 font-heading text-sm font-semibold tracking-wide hover:bg-[#85161c]"
+            size="lg"
+            className="w-full"
           >
             {registration.isPending ? (
               "Creating account…"
@@ -298,9 +299,14 @@ export function SignupPage() {
         </FieldGroup>
       </form>
 
-      {/* No login page yet; plain text rather than a link to nowhere. */}
       <div className="mt-6 border-t border-gray-100 pt-5 text-center text-sm text-gray-600">
-        Already have an account? <span className="font-semibold">Sign in</span>
+        Already have an account?{" "}
+        <Link
+          to="/login"
+          className="rounded-sm font-heading font-semibold text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          Sign in
+        </Link>
       </div>
     </AuthLayout>
   )

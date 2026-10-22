@@ -214,7 +214,6 @@ describe("SignupPage", () => {
     expect(screen.getByLabelText(/Full Name/)).not.toHaveAttribute(
       "aria-invalid"
     )
-    expect(document.querySelector("a")).toBeNull()
   })
 
   it("on a CSRF rejection, says so and fetches a new token for the next attempt", async () => {
@@ -267,10 +266,11 @@ describe("SignupPage", () => {
     }
   )
 
-  it("has no links to pages that don't exist", async () => {
+  it("links only to sign in, not to pages that don't exist", async () => {
     stubFetch()
     await renderRoute("/signup")
     expect(screen.getByText(/Terms of Service/)).toBeInTheDocument()
-    expect(document.querySelector("a")).toBeNull()
+    const links = [...document.querySelectorAll("a")]
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/login"])
   })
 })

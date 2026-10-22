@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import {
   CircleAlert,
@@ -31,7 +31,14 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
-import { ApiError, apiErrorMessage, apiPatch, apiPost } from "@/lib/api"
+import {
+  ApiError,
+  apiErrorMessage,
+  apiPatch,
+  apiPost,
+  meQuery,
+  type Me,
+} from "@/lib/api"
 import { verifyEmailSchema } from "@/lib/validation"
 
 const PATH = "/api/v1/auth/email_verification"
@@ -42,10 +49,11 @@ const INVALID_CODE =
   "That code is incorrect or has expired. Enter the latest code or request a new one."
 
 type Errors = { email?: string; code?: string }
-type VerifyResponse = { email_verified: true; user?: unknown }
+type VerifyResponse = { email_verified: true; user?: Me["user"] }
 
 export function VerifyEmailPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   // Signup passes the email and when its code was sent; a direct visit has neither.
   const state = useLocation().state as {
     email?: string
@@ -72,8 +80,11 @@ export function VerifyEmailPage() {
     mutationFn: (body: z.output<typeof verifyEmailSchema>) =>
       apiPatch(PATH, body) as Promise<VerifyResponse>,
     // Only the registering browser gets `user`; Rails has then set the auth cookie.
+    // Caching the user replaces a signed-out answer from an earlier /me, which would bounce /apply to /login.
     onSuccess: ({ user }) => {
-      if (user) navigate("/apply", { replace: true })
+      if (!user) return
+      queryClient.setQueryData(meQuery.queryKey, () => ({ user }))
+      navigate("/apply", { replace: true })
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 422) {
@@ -143,11 +154,16 @@ export function VerifyEmailPage() {
           <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900">
             Email verified
           </h1>
-          {/* No login page yet; plain text rather than a link to nowhere. */}
           <p className="mt-2 text-sm text-gray-600">
             Sign in with your email and password to continue your membership
             application.
           </p>
+          <Link
+            to="/login"
+            className="mt-4 inline-block rounded-sm font-heading text-sm font-semibold text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            Sign in
+          </Link>
         </div>
       </AuthLayout>
     )
@@ -267,7 +283,8 @@ export function VerifyEmailPage() {
           <Button
             type="submit"
             disabled={verify.isPending}
-            className="h-12 w-full font-heading text-sm font-semibold tracking-wide hover:bg-[#85161c]"
+            size="lg"
+            className="w-full"
           >
             {verify.isPending ? "Verifying…" : "Verify Email"}
           </Button>

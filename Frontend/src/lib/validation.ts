@@ -47,6 +47,14 @@ export const signupSchema = z.object({
 export type SignupInput = z.input<typeof signupSchema>
 export type SignupFields = keyof SignupInput
 
+// No password rules at login: Rails alone decides whether a password matches.
+export const loginSchema = z.object({
+  email: signupSchema.shape.email,
+  password: z.string().min(1, "Password can't be blank"),
+})
+
+export type LoginInput = z.input<typeof loginSchema>
+
 export const verifyEmailSchema = z.object({
   email: signupSchema.shape.email,
   code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
