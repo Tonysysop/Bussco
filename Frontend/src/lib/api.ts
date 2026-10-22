@@ -1,4 +1,20 @@
-import { queryOptions, type QueryClient } from "@tanstack/react-query"
+import {
+  QueryClient,
+  queryOptions,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query"
+
+// TanStack's default "online" mode pauses requests while the browser reports itself offline, which
+// leaves "Saving…" or "Loading…" on screen with no error. Failing instead shows apiErrorMessage's
+// "We couldn't reach the server", and the user decides when to retry.
+export const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { networkMode: "always" },
+      mutations: { networkMode: "always" },
+    },
+  })
 
 export class ApiError extends Error {
   status: number
@@ -84,9 +100,19 @@ export const meQuery = queryOptions({
 
 export const APPLICATION_PATH = "/api/v1/membership/application"
 
+export type EmploymentFields = {
+  sap_staff_id: string | null
+  business_unit: string | null
+  department: string | null
+  office_location: string | null
+}
+
 // Only the fields the frontend reads (Backend/docs/membership/application.md).
 export type MembershipApplication = {
-  application: { submitted_at: string | null; lock_version: number }
+  application: EmploymentFields & {
+    submitted_at: string | null
+    lock_version: number
+  }
   applicant: { full_name: string; email: string; membership_status: string }
   // null once submitted; current_stage is the first incomplete stage, or "review".
   progress: {
@@ -96,14 +122,37 @@ export type MembershipApplication = {
   } | null
 }
 
+type Applicant = Pick<Me["user"], "id" | "email">
+
+// Rails answers for whoever owns the session cookie now, which another tab can change between
+// /me and this request. Such an answer is an error, never data: it is not cached or shown.
+export class IdentityMismatch extends Error {}
+
+function forApplicant<T extends MembershipApplication | null>(
+  data: T,
+  { email }: Applicant
+) {
+  if (data && data.applicant.email !== email)
+    throw new IdentityMismatch("Application belongs to a different sign-in")
+  return data
+}
+
 // A 404 means never started. Keyed by the /me user id: on a shared computer the next person to sign
 // in must never be shown the previous person's cached application.
-export const applicationQuery = (userId: number) =>
+export const applicationQuery = (user: Applicant) =>
   queryOptions({
-    queryKey: [...MEMBERSHIP_KEY, "application", userId],
-    queryFn: () => getOrNull<MembershipApplication>(APPLICATION_PATH, 404),
+    queryKey: [...MEMBERSHIP_KEY, "application", user.id],
+    queryFn: async () =>
+      forApplicant(
+        await getOrNull<MembershipApplication>(APPLICATION_PATH, 404),
+        user
+      ),
     retry: false,
   })
+
+// The sign-in changed underneath this tab: ask Rails who is signed in now.
+export const revalidateIdentity = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({ queryKey: meQuery.queryKey })
 
 // Signed out without asking /me (an application 401, password reset, later logout): forget the user
 // and every cached application, so none of it outlives the session in memory.
@@ -137,11 +186,61 @@ export const apiPost = (path: string, data: unknown) => send("POST", path, data)
 export const apiPatch = (path: string, data: unknown) =>
   send("PATCH", path, data)
 
+export const startApplication = async (user: Applicant) =>
+  forApplicant(
+    (await apiPost(APPLICATION_PATH, {})) as MembershipApplication,
+    user
+  )
+
+// Saves one stage with the lock_version the form's values were loaded with (never a newer cached
+// one, which would overwrite changes the form never saw). Only Rails' answer updates the cache.
+export function useSaveStage(stage: string, user: Applicant) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      version,
+      fields,
+    }: {
+      version: number
+      fields: Record<string, string | null>
+    }) =>
+      forApplicant(
+        (await apiPatch(`${APPLICATION_PATH}/stages/${stage}`, {
+          lock_version: version,
+          application: fields,
+        })) as MembershipApplication,
+        user
+      ),
+    onSuccess: (data) =>
+      queryClient.setQueryData(applicationQuery(user).queryKey, () => data),
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 401)
+        forgetSession(queryClient)
+      if (error instanceof IdentityMismatch) revalidateIdentity(queryClient)
+      // Submitted elsewhere (read-only screen) or gone (Start screen): reload and let the page decide.
+      if (
+        error instanceof ApiError &&
+        (apiErrorCode(error) === "already_submitted" || error.status === 404)
+      )
+        queryClient.invalidateQueries({
+          queryKey: applicationQuery(user).queryKey,
+        })
+    },
+  })
+}
+
+export const apiErrorCode = (error: Error) =>
+  error instanceof ApiError
+    ? (error.body as { error?: string } | null)?.error
+    : undefined
+
 // Message for any failure a form can't attribute to a field.
 export function apiErrorMessage(error: Error) {
   // fetch rejects with a TypeError only when no response arrived.
   if (error instanceof TypeError)
     return "We couldn't reach the server. Check your connection and try again."
+  if (error instanceof IdentityMismatch)
+    return "You signed in to a different account in another window. Please try again."
   if (!(error instanceof ApiError))
     return "Something went wrong on our side. Please try again."
   if (error.status === 403) return "Your session expired. Please try again."
