@@ -14,17 +14,20 @@ describe("ApplyPage", () => {
     ).toBeInTheDocument()
   })
 
-  it("asks to sign in on a 401, whatever router state claims", async () => {
-    const fetchMock = stubFetch({
-      status: 401,
-      body: { error: "unauthenticated" },
+  it("sends a signed-out or expired session to login, whatever router state claims", async () => {
+    const unauthenticated = { status: 401, body: { error: "unauthenticated" } }
+    const fetchMock = stubFetch(unauthenticated, unauthenticated)
+    const router = await renderRoute("/apply", {
+      user: { full_name: "Mallory" },
     })
-    await renderRoute("/apply", { user: { full_name: "Mallory" } })
     expect(
-      await screen.findByRole("heading", { name: "Sign in to continue" })
+      await screen.findByRole("heading", { name: "Welcome back" })
     ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe("/login")
     expect(screen.queryByText(/Mallory/)).not.toBeInTheDocument()
-    expect(callsTo(fetchMock, "/api/v1/auth/me", "GET")).toHaveLength(1)
+    expect(callsTo(fetchMock, "/api/v1/auth/me", "GET").length).toBeGreaterThan(
+      0
+    )
   })
 
   it("reports a network failure and retries on request", async () => {

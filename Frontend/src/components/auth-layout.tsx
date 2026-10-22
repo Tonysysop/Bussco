@@ -5,7 +5,13 @@ import logo from "@/assets/bussco.png"
 const LOGO_ALT = "BUA Senior Staff Multipurpose Cooperative Society"
 
 // Split-screen shell from design-reference/stitch/Signup.png: brand panel left, form panel right.
-export function AuthLayout({ children }: { children: React.ReactNode }) {
+export function AuthLayout({
+  children,
+  intro = "Create your account to begin your membership application and access cooperative savings and loan benefits.",
+}: {
+  children: React.ReactNode
+  intro?: string
+}) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-white lg:flex-row lg:bg-transparent">
       <aside className="relative hidden w-5/12 flex-col justify-between overflow-hidden bg-brand-panel p-12 text-white lg:flex">
@@ -55,10 +61,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           <h2 className="mb-4 font-heading text-4xl leading-tight font-extrabold tracking-tight">
             Your cooperative, at your fingertips
           </h2>
-          <p className="text-lg leading-relaxed text-white/85">
-            Create your account to begin your membership application and access
-            cooperative savings and loan benefits.
-          </p>
+          <p className="text-lg leading-relaxed text-white/85">{intro}</p>
         </div>
 
         <div className="relative flex items-center gap-3 border-t border-white/15 pt-6">

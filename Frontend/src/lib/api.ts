@@ -1,3 +1,5 @@
+import { queryOptions } from "@tanstack/react-query"
+
 export class ApiError extends Error {
   status: number
   body: unknown
@@ -42,6 +44,32 @@ async function request(path: string, init: RequestInit = {}) {
 }
 
 export const apiGet = (path: string) => request(path)
+
+export type Me = {
+  user: {
+    id: number
+    full_name: string
+    email: string
+    email_verified: boolean
+    account_status: string
+    membership_status: string
+  }
+}
+
+// A 401 means signed out: it resolves to null, replacing any cached user, rather than erroring.
+export const meQuery = queryOptions({
+  queryKey: ["auth", "me"],
+  queryFn: async (): Promise<Me | null> => {
+    try {
+      return (await apiGet("/api/v1/auth/me")) as Me
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return null
+      throw error
+    }
+  },
+  // Other failures get a Try again button.
+  retry: false,
+})
 
 async function send(method: string, path: string, data: unknown) {
   try {
