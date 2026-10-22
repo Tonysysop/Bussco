@@ -1,9 +1,15 @@
-import { useEffect } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+} from "@tanstack/react-query"
 import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  ChevronDown,
   CircleAlert,
   CircleCheck,
   Info,
@@ -22,18 +28,29 @@ import {
 import { SessionStatus } from "@/components/auth-layout"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import {
   ApiError,
-  APPLICATION_PATH,
+  apiErrorCode,
   apiErrorMessage,
-  apiPost,
   applicationQuery,
   forgetSession,
+  IdentityMismatch,
   meQuery,
+  revalidateIdentity,
+  startApplication,
+  useSaveStage,
+  type EmploymentFields,
   type Me,
   type MembershipApplication,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import {
+  EMPLOYMENT_LABELS,
+  employmentErrors,
+  type EmploymentField,
+} from "@/lib/validation"
 
 const LOGO_ALT = "BUA Senior Staff Multipurpose Cooperative Society"
 // Rails runs on Africa/Lagos time, so the applicant sees the date the cooperative recorded.
@@ -43,6 +60,9 @@ const SUBMITTED_DATE = new Intl.DateTimeFormat("en-GB", {
   month: "2-digit",
   year: "numeric",
 })
+
+// Stand-in key while /me hasn't answered; the application query is disabled until it does.
+const SIGNED_OUT = { id: 0, email: "" }
 
 const unauthenticated = (error: Error | null) =>
   error instanceof ApiError && error.status === 401
@@ -54,19 +74,18 @@ export function ApplyPage() {
   const navigate = useNavigate()
   const { stage: slug } = useParams()
   const me = useQuery(meQuery)
-  // The user id comes only from Rails' /me answer, never from the URL or router state.
-  const userId = me.data?.user.id ?? 0
+  // The user comes only from Rails' /me answer, never from the URL or router state.
+  const user = me.data?.user ?? SIGNED_OUT
   const application = useQuery({
-    ...applicationQuery(userId),
+    ...applicationQuery(user),
     enabled: !!me.data,
   })
 
   // Idempotent in Rails, so a repeat after a lost response just returns the same draft.
   const start = useMutation({
-    mutationFn: () =>
-      apiPost(APPLICATION_PATH, {}) as Promise<MembershipApplication>,
+    mutationFn: () => startApplication(user),
     onSuccess: (data) => {
-      queryClient.setQueryData(applicationQuery(userId).queryKey, () => data)
+      queryClient.setQueryData(applicationQuery(user).queryKey, () => data)
       navigate("/apply/employment", { replace: true })
     },
   })
@@ -77,6 +96,14 @@ export function ApplyPage() {
   useEffect(() => {
     if (sessionEnded) forgetSession(queryClient)
   }, [sessionEnded, queryClient])
+
+  // Rails answered for a different account (switched in another tab): ask who is signed in now.
+  const identityChanged =
+    application.error instanceof IdentityMismatch ||
+    start.error instanceof IdentityMismatch
+  useEffect(() => {
+    if (identityChanged) revalidateIdentity(queryClient)
+  }, [identityChanged, queryClient])
 
   if (me.data === null) return <Navigate to="/login" replace />
   if (me.data === undefined)
@@ -152,22 +179,35 @@ export function ApplyPage() {
       user={me.data.user}
       stages={application.data.progress?.stages}
     >
-      {/* Each stage's form arrives in its own increment (F2.2–F2.6). */}
-      <p className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-600">
-        The {stage.label.toLowerCase()} section will be available here soon.
-      </p>
-      <Actions stage={stage}>
-        {next && (
-          <Link
-            to={`/apply/${next.key}`}
-            className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
-          >
-            {next.key === "review" ? "Continue to review" : "Continue"}
-            <ArrowRight aria-hidden className="size-[18px]" />
-          </Link>
-        )}
-      </Actions>
+      {stage.key === "employment" ? (
+        <EmploymentForm application={application.data} user={me.data.user} />
+      ) : (
+        <>
+          {/* Each stage's form arrives in its own increment (F2.3–F2.6). */}
+          <p className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-600">
+            The {stage.label.toLowerCase()} section will be available here soon.
+          </p>
+          <StageLinks stage={stage} next={next} />
+        </>
+      )}
     </StageScreen>
+  )
+}
+
+// Plain navigation for stages whose form isn't built yet.
+function StageLinks({ stage, next }: { stage: Stage; next?: Stage }) {
+  return (
+    <Actions stage={stage}>
+      {next && (
+        <Link
+          to={`/apply/${next.key}`}
+          className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+        >
+          {next.key === "review" ? "Continue to review" : "Continue"}
+          <ArrowRight aria-hidden className="size-[18px]" />
+        </Link>
+      )}
+    </Actions>
   )
 }
 
@@ -269,7 +309,7 @@ function Submitted({ data }: { data: MembershipApplication }) {
   const check = useMutation({
     mutationFn: async () => {
       const me = await queryClient.fetchQuery(meQuery)
-      if (me) await queryClient.fetchQuery(applicationQuery(me.user.id))
+      if (me) await queryClient.fetchQuery(applicationQuery(me.user))
     },
   })
   const submittedAt = data.application.submitted_at
@@ -393,4 +433,376 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]!.toUpperCase())
     .join("")
+}
+
+// Stage1.png. Placeholder options until the approved list exists (PRE-PRODUCTION D7); Rails stores
+// any text, so "Other" saves what was typed and a saved value outside the list reopens as "Other".
+const BUSINESS_UNITS = [
+  "BUA Cement Plc",
+  "BUA Sugar Refinery",
+  "BUA Foods",
+  "BUA Ports & Terminals",
+  "BUA Group Corporate HQ",
+]
+const OTHER = "Other"
+
+type EmploymentValues = Record<EmploymentField, string> & {
+  other_business_unit: string
+}
+
+function employmentValues(saved: EmploymentFields): EmploymentValues {
+  const unit = saved.business_unit ?? ""
+  const listed = unit === "" || BUSINESS_UNITS.includes(unit)
+  return {
+    sap_staff_id: saved.sap_staff_id ?? "",
+    business_unit: listed ? unit : OTHER,
+    other_business_unit: listed ? "" : unit,
+    department: saved.department ?? "",
+    office_location: saved.office_location ?? "",
+  }
+}
+
+const SELECT_CLASS =
+  "h-12 w-full appearance-none rounded-lg border border-input bg-white pr-10 pl-3 text-base text-gray-900 accent-primary outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm"
+
+function EmploymentForm({
+  application,
+  user,
+}: {
+  application: MembershipApplication
+  user: Me["user"]
+}) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const save = useSaveStage("employment", user)
+  // The values and the lock_version they were loaded with travel together: a background refetch
+  // never advances the version under older, unsaved values.
+  const [draft, setDraft] = useState(() => ({
+    values: employmentValues(application.application),
+    version: application.application.lock_version,
+  }))
+  const [errors, setErrors] = useState<
+    Partial<Record<EmploymentField, string>>
+  >({})
+  const [savedAt, setSavedAt] = useState<Date>()
+  const [pendingAction, setPendingAction] = useState<"later" | "continue">()
+  const { values } = draft
+  const other = values.business_unit === OTHER
+
+  function update(field: keyof EmploymentValues, value: string) {
+    setDraft((current) => ({
+      ...current,
+      values: { ...current.values, [field]: value },
+    }))
+    const errorField = field === "other_business_unit" ? "business_unit" : field
+    if (errors[errorField])
+      setErrors((current) => ({ ...current, [errorField]: undefined }))
+  }
+
+  function handleSave(action: "later" | "continue") {
+    if (save.isPending) return
+    const input = {
+      sap_staff_id: values.sap_staff_id,
+      business_unit: other ? values.other_business_unit : values.business_unit,
+      department: values.department,
+      office_location: values.office_location,
+    }
+    const result = employmentErrors(input, action === "continue")
+    if (Object.keys(result.errors).length || !result.data) {
+      setErrors(result.errors)
+      save.reset()
+      return
+    }
+    setErrors({})
+    setSavedAt(undefined)
+    setPendingAction(action)
+    // Blank fields are saved as NULL, which is how a draft field is cleared.
+    const fields = Object.fromEntries(
+      Object.entries(result.data).map(([field, value]) => [
+        field,
+        value || null,
+      ])
+    )
+    save.mutate(
+      { version: draft.version, fields },
+      {
+        onSuccess: (data) => {
+          setDraft((current) => ({
+            ...current,
+            version: data.application.lock_version,
+          }))
+          if (action === "continue") navigate("/apply/personal")
+          else setSavedAt(new Date())
+        },
+        onError: (error) => {
+          if (!(error instanceof ApiError) || error.status !== 422) return
+          const railsErrors =
+            (error.body as { errors?: Record<string, string[]> } | null)
+              ?.errors ?? {}
+          setErrors(
+            Object.fromEntries(
+              Object.entries(railsErrors)
+                .filter(([field]) => field in EMPLOYMENT_LABELS)
+                .map(([field, messages]) => [
+                  field,
+                  `${EMPLOYMENT_LABELS[field as EmploymentField]} ${messages[0]}`,
+                ])
+            )
+          )
+        },
+      }
+    )
+  }
+
+  // Explicit only: replaces the typed values with what Rails has saved, and their version.
+  // Explicit only: replaces the typed values with what Rails has saved, and their version. It
+  // refetches the query the page watches, so a 401 or another account's answer is handled there
+  // (sign-out, identity revalidation) and never lands in the form or the cache.
+  const reload = useMutation({
+    mutationFn: () => queryClient.fetchQuery(applicationQuery(user)),
+    onSuccess: (latest) => {
+      if (!latest) return
+      setDraft({
+        values: employmentValues(latest.application),
+        version: latest.application.lock_version,
+      })
+      setErrors({})
+      save.reset()
+    },
+  })
+
+  const describedBy = (field: EmploymentField, hint?: string) =>
+    [errors[field] && `${field}-error`, hint].filter(Boolean).join(" ") ||
+    undefined
+
+  const fieldProps = (field: EmploymentField | "other_business_unit") => {
+    const errorField = field === "other_business_unit" ? "business_unit" : field
+    return {
+      id: field,
+      name: field,
+      value: values[field],
+      onChange: (
+        event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+      ) => update(field, event.target.value),
+      "aria-invalid": errors[errorField] ? true : undefined,
+      "aria-required": true,
+      "aria-describedby": describedBy(errorField),
+    }
+  }
+
+  const label = (field: string, text: string) => (
+    <FieldLabel htmlFor={field} className="font-heading font-semibold">
+      {text}{" "}
+      <span aria-hidden className="text-primary">
+        *
+      </span>
+    </FieldLabel>
+  )
+
+  return (
+    <form
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleSave("continue")
+      }}
+    >
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field data-invalid={!!errors.sap_staff_id}>
+          {label("sap_staff_id", "SAP / Staff ID")}
+          <Input
+            {...fieldProps("sap_staff_id")}
+            autoComplete="off"
+            placeholder="e.g. SAP-849201"
+            className="h-12 bg-white px-3"
+          />
+          <FieldError id="sap_staff_id-error">{errors.sap_staff_id}</FieldError>
+        </Field>
+
+        <Field data-invalid={!!errors.business_unit && !other}>
+          {label("business_unit", "Business Unit")}
+          <div className="relative">
+            <select
+              {...fieldProps("business_unit")}
+              aria-describedby={
+                other ? undefined : describedBy("business_unit")
+              }
+              aria-invalid={errors.business_unit && !other ? true : undefined}
+              className={SELECT_CLASS}
+            >
+              <option value="">Select business unit</option>
+              {[...BUSINESS_UNITS, OTHER].map((unit) => (
+                <option key={unit} value={unit}>
+                  {unit}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-primary"
+            />
+          </div>
+          {!other && (
+            <FieldError id="business_unit-error">
+              {errors.business_unit}
+            </FieldError>
+          )}
+        </Field>
+
+        {other && (
+          <Field
+            data-invalid={!!errors.business_unit}
+            className="sm:col-span-2"
+          >
+            {label("other_business_unit", "Specify Business Unit Name")}
+            <Input
+              {...fieldProps("other_business_unit")}
+              placeholder="Enter company or subsidiary name"
+              className="h-12 bg-white px-3"
+            />
+            <FieldError id="business_unit-error">
+              {errors.business_unit}
+            </FieldError>
+          </Field>
+        )}
+
+        <Field data-invalid={!!errors.department} className="sm:col-span-2">
+          {label("department", "Department")}
+          <Input
+            {...fieldProps("department")}
+            placeholder="e.g. Finance & Accounts"
+            className="h-12 bg-white px-3"
+          />
+          <FieldError id="department-error">{errors.department}</FieldError>
+        </Field>
+
+        <Field
+          data-invalid={!!errors.office_location}
+          className="sm:col-span-2"
+        >
+          {label("office_location", "Office address / location")}
+          <Input
+            {...fieldProps("office_location")}
+            autoComplete="street-address"
+            placeholder="e.g. BUA Towers, 5 Churchgate Street, Victoria Island, Lagos"
+            className="h-12 bg-white px-3"
+          />
+          <FieldError id="office_location-error">
+            {errors.office_location}
+          </FieldError>
+        </Field>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+        {/* Says "saved" only once Rails has confirmed it. */}
+        <p
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-1.5"
+        >
+          {savedAt && (
+            <>
+              <CircleCheck aria-hidden className="size-4 text-green-700" />
+              Draft saved at{" "}
+              {savedAt.toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </>
+          )}
+        </p>
+        <p>* Required information</p>
+      </div>
+
+      {save.error && <StageSaveError error={save.error} reload={reload} />}
+
+      <Actions stage={STAGES[0]}>
+        <div className="flex w-full flex-col-reverse gap-3 sm:w-auto sm:flex-row">
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            disabled={save.isPending}
+            onClick={() => handleSave("later")}
+            className="w-full sm:w-auto"
+          >
+            {save.isPending && pendingAction === "later"
+              ? "Saving…"
+              : "Save and continue later"}
+          </Button>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={save.isPending}
+            className="w-full sm:w-auto"
+          >
+            {save.isPending && pendingAction === "continue" ? (
+              "Saving…"
+            ) : (
+              <>
+                Continue
+                <ArrowRight aria-hidden className="size-[18px]" />
+              </>
+            )}
+          </Button>
+        </div>
+      </Actions>
+    </form>
+  )
+}
+
+// What went wrong with a stage save, in plain words; shared by every stage form.
+function StageSaveError({
+  error,
+  reload,
+}: {
+  error: Error
+  reload: UseMutationResult<unknown, Error, void>
+}) {
+  const code = apiErrorCode(error)
+  // Handled elsewhere: 401 signs out, already_submitted reloads into the read-only screen, and a
+  // 422 on a known field shows under that field.
+  if (unauthenticated(error) || code === "already_submitted") return null
+  const fieldOnly =
+    error instanceof ApiError &&
+    error.status === 422 &&
+    Object.keys((error.body as { errors?: object } | null)?.errors ?? {}).every(
+      (field) => field in EMPLOYMENT_LABELS
+    )
+  if (fieldOnly) return null
+
+  return (
+    <Alert variant="destructive" className="mt-4">
+      <CircleAlert aria-hidden />
+      <AlertDescription>
+        {code === "stale" ? (
+          <>
+            <p>
+              This application was changed in another tab or window, so your
+              changes here weren&apos;t saved.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => reload.mutate()}
+              disabled={reload.isPending}
+              className="mt-2"
+            >
+              {reload.isPending ? "Loading…" : "Load latest saved version"}
+            </Button>
+            {/* Typed values stay; the button stays for another try. */}
+            {reload.isError && !unauthenticated(reload.error) && (
+              <p className="mt-2">{apiErrorMessage(reload.error)}</p>
+            )}
+          </>
+        ) : code === "invalid_csrf_token" ? (
+          "We couldn't verify this request. Please try again."
+        ) : error instanceof ApiError && error.status === 422 ? (
+          "Some details couldn't be saved. Check the form and try again."
+        ) : (
+          apiErrorMessage(error)
+        )}
+      </AlertDescription>
+    </Alert>
+  )
 }

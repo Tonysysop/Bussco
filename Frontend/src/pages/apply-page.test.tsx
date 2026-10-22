@@ -3,69 +3,17 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 
 import { callsTo, csrfHeader, stubFetch } from "@/test/fetch"
+import {
+  APP,
+  draft,
+  ME,
+  NOT_STARTED,
+  SIGNED_IN,
+  SIGNED_OUT,
+  SUBMITTED,
+  USER,
+} from "@/test/application"
 import { renderRoute } from "@/test/render"
-
-const ME = "/api/v1/auth/me"
-const APP = "/api/v1/membership/application"
-const USER = {
-  id: 1,
-  full_name: "Ada Obi",
-  email: "ada@example.com",
-  email_verified: true,
-  account_status: "active",
-  membership_status: "not_started",
-}
-const SIGNED_IN = { status: 200, body: { user: USER } }
-const SIGNED_OUT = { status: 401, body: { error: "unauthenticated" } }
-const NOT_STARTED = { path: APP, status: 404, body: { error: "not_found" } }
-
-function draft(
-  stages: Record<string, string> = {},
-  current_stage = "employment",
-  status = 200
-) {
-  return {
-    path: APP,
-    status,
-    body: {
-      application: { submitted_at: null, lock_version: 1 },
-      applicant: {
-        full_name: "Ada Obi",
-        email: USER.email,
-        membership_status: "not_started",
-      },
-      progress: {
-        stages: {
-          employment: "incomplete",
-          personal: "incomplete",
-          next_of_kin: "incomplete",
-          savings: "incomplete",
-          ...stages,
-        },
-        current_stage,
-        ready_to_submit: false,
-        missing: {},
-      },
-      policy: {},
-    },
-  }
-}
-
-// 23:30 UTC on the 21st is already the 22nd in Lagos (UTC+1).
-const SUBMITTED = {
-  path: APP,
-  status: 200,
-  body: {
-    application: { submitted_at: "2026-10-21T23:30:00Z", lock_version: 7 },
-    applicant: {
-      full_name: "Ada Obi",
-      email: USER.email,
-      membership_status: "awaiting_approval",
-    },
-    progress: null,
-    policy: {},
-  },
-}
 
 const progressItems = () =>
   within(screen.getByRole("list")).getAllByRole("listitem")
@@ -188,15 +136,14 @@ describe("ApplyPage: start", () => {
         .click(await screen.findByRole("button", { name: /Start application/ }))
 
       expect(
-        await screen.findByText(/employment section will be available/)
+        await screen.findByLabelText(/SAP \/ Staff ID/)
       ).toBeInTheDocument()
       expect(router.state.location.pathname).toBe("/apply/employment")
       const [post] = callsTo(fetchMock, APP)
       expect(csrfHeader(post)).toBe("csrf-token-1")
-      expect(screen.getByRole("link", { name: /Continue/ })).toHaveAttribute(
-        "href",
-        "/apply/personal"
-      )
+      expect(
+        screen.getByRole("button", { name: /^Continue/ })
+      ).toBeInTheDocument()
     }
   )
 
@@ -220,7 +167,7 @@ describe("ApplyPage: start", () => {
     await user.dblClick(pending)
     await act(async () => release())
 
-    await screen.findByText(/employment section will be available/)
+    await screen.findByLabelText(/SAP \/ Staff ID/)
     expect(callsTo(fetchMock, APP)).toHaveLength(1)
   })
 
@@ -308,17 +255,13 @@ describe("ApplyPage: resume and navigation", () => {
     expect(screen.getByText(/Step 5 of 5/)).toBeInTheDocument()
   })
 
-  it("moves with Back and Continue only, without saving or submitting anything", async () => {
-    const fetchMock = stubFetch(SIGNED_IN, draft({}, "employment"))
-    const router = await renderRoute("/apply/employment")
+  it("moves through stages without forms yet with Back and Continue only, saving nothing", async () => {
+    const fetchMock = stubFetch(SIGNED_IN, draft({}, "personal"))
+    const router = await renderRoute("/apply/personal")
     const user = userEvent.setup()
-    await screen.findByRole("heading", {
-      name: "Complete your membership application",
-    })
-    expect(screen.queryByRole("link", { name: /Back/ })).toBeNull()
+    await screen.findByRole("heading", { name: "Personal details" })
 
     for (const [title, path] of [
-      ["Personal details", "/apply/personal"],
       ["Next of kin", "/apply/next_of_kin"],
       ["Monthly contribution", "/apply/savings"],
     ] as const) {
@@ -593,7 +536,7 @@ describe("ApplyPage: one user's application never reaches another", () => {
       .setup()
       .click(await screen.findByRole("button", { name: /Start application/ }))
 
-    await screen.findByText(/employment section will be available/)
+    await screen.findByLabelText(/SAP \/ Staff ID/)
     // Had it been written under another key, the page would have fetched the application again.
     expect(callsTo(fetchMock, APP, "GET")).toHaveLength(1)
   })

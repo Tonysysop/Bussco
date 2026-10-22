@@ -1,7 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
 import { render } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router"
 import { vi } from "vitest"
+
+import { createQueryClient } from "@/lib/api"
 
 export async function renderRoute(pathname: string, state?: unknown) {
   // Fresh modules so the in-memory CSRF token from another test isn't reused.
@@ -11,7 +13,7 @@ export async function renderRoute(pathname: string, state?: unknown) {
     initialEntries: [{ pathname, state }],
   })
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={createQueryClient()}>
       <RouterProvider router={router} />
     </QueryClientProvider>
   )
