@@ -4,7 +4,7 @@ import { ArrowRight, CircleAlert, Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { Link, Navigate, useNavigate } from "react-router"
 import { z } from "zod"
 
-import { AuthLayout } from "@/components/auth-layout"
+import { AuthLayout, SessionStatus } from "@/components/auth-layout"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -62,30 +62,10 @@ export function LoginPage() {
 
   if (me.data) return <Navigate to="/apply" replace />
 
-  // Until /me answers, a network or server failure isn't proof of being signed out.
   if (me.data === undefined)
     return (
       <AuthLayout intro={INTRO}>
-        {me.isError ? (
-          <div className="flex flex-col gap-4">
-            <Alert variant="destructive">
-              <CircleAlert aria-hidden />
-              <AlertDescription>{apiErrorMessage(me.error)}</AlertDescription>
-            </Alert>
-            <Button
-              onClick={() => me.refetch()}
-              disabled={me.isFetching}
-              size="lg"
-              className="w-full"
-            >
-              Try again
-            </Button>
-          </div>
-        ) : (
-          <p role="status" className="text-center text-sm text-gray-600">
-            Checking your sign-in…
-          </p>
-        )}
+        <SessionStatus me={me} />
       </AuthLayout>
     )
 

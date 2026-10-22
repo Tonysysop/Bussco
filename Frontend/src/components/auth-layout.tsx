@@ -1,7 +1,11 @@
-import { ArrowLeft, CircleHelp, ShieldCheck } from "lucide-react"
+import type { UseQueryResult } from "@tanstack/react-query"
+import { ArrowLeft, CircleAlert, CircleHelp, ShieldCheck } from "lucide-react"
 import { Link } from "react-router"
 
 import logo from "@/assets/bussco.png"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { apiErrorMessage } from "@/lib/api"
 
 const LOGO_ALT = "BUA Senior Staff Multipurpose Cooperative Society"
 
@@ -112,7 +116,7 @@ export function AuthLayout({
           </p>
         </div>
 
-        <footer className="w-full max-w-[480px] pt-6 pb-2 text-center text-xs text-gray-400">
+        <footer className="w-full max-w-[480px] pt-6 pb-2 text-center text-xs text-gray-500">
           © {new Date().getFullYear()} BUA Senior Staff Multipurpose Cooperative
           Society Limited. All rights reserved.
         </footer>
@@ -131,6 +135,31 @@ export function BackToSignIn() {
         <ArrowLeft aria-hidden className="size-4" />
         Back to Sign In
       </Link>
+    </p>
+  )
+}
+
+// What a page shows until meQuery answers. A network or server failure isn't proof of being
+// signed out, so it offers a retry instead of the page's form.
+export function SessionStatus({ me }: { me: UseQueryResult }) {
+  return me.isError ? (
+    <div className="flex flex-col gap-4">
+      <Alert variant="destructive">
+        <CircleAlert aria-hidden />
+        <AlertDescription>{apiErrorMessage(me.error)}</AlertDescription>
+      </Alert>
+      <Button
+        onClick={() => me.refetch()}
+        disabled={me.isFetching}
+        size="lg"
+        className="w-full"
+      >
+        Try again
+      </Button>
+    </div>
+  ) : (
+    <p role="status" className="text-center text-sm text-gray-600">
+      Checking your sign-in…
     </p>
   )
 }
