@@ -25,7 +25,7 @@ class Api::V1::Membership::ApplicationsControllerTest < ActionDispatch::Integrat
     user = User.create!(full_name: "Ada Obi", email:, password: PASSWORD, email_verified_at: Time.current)
     @headers = browser_headers
     post "/api/v1/auth/session", params: { email:, password: PASSWORD }, headers: @headers, as: :json
-    @headers = @headers.merge("X-CSRF-Token" => response.parsed_body.fetch("csrf_token"))
+    @headers = @headers.merge("X-CSRF-Token" => response.parsed_body.fetch("csrf_token"), "X-Applicant-Id" => user.id.to_s)
     user
   end
 
@@ -366,6 +366,37 @@ class Api::V1::Membership::ApplicationsControllerTest < ActionDispatch::Integrat
     assert_nil saved.submitted_at
   ensure
     Rails.configuration.x.membership_declaration_version = "draft-v1"
+  end
+
+  test "every write must name the signed-in applicant; any other id, or none, is refused before anything is written" do
+    start
+    save_stage("employment", { department: "Finance" })
+    [ @headers.merge("X-Applicant-Id" => (@user.id + 1).to_s), @headers.except("X-Applicant-Id") ].each do |headers|
+      [ -> { start(headers:) }, -> { save_stage("employment", { department: "Other" }, headers:) },
+        -> { put_photo(upload(PNG), headers:) }, -> { submit(headers:) } ].each do |request|
+        assert_no_changes -> { saved.attributes } do
+          request.call
+        end
+        assert_response :conflict
+        assert_equal({ "error" => "identity_mismatch" }, body)
+      end
+    end
+    assert_not saved.passport_photo.attached?
+  end
+
+  test "a save from a tab still showing A, after B signed in elsewhere, never lands in B's application" do
+    a_id = @user.id
+    start
+    a_version = version
+    ben = sign_up_and_in("ben@example.com") # the shared browser session now belongs to Ben
+    start
+    assert_equal a_version, MembershipApplication.find_by!(user: ben).lock_version, "same version: only the id can tell them apart"
+
+    save_stage("next_of_kin", { next_of_kin_name: "A's next of kin" }, lock_version: a_version,
+      headers: @headers.merge("X-Applicant-Id" => a_id.to_s))
+    assert_response :conflict
+    assert_equal "identity_mismatch", body["error"]
+    assert_nil MembershipApplication.find_by!(user: ben).next_of_kin_name
   end
 
   test "unsafe requests need a valid CSRF token and our Origin" do
