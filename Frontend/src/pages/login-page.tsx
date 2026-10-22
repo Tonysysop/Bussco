@@ -162,12 +162,20 @@ export function LoginPage() {
           </Field>
 
           <Field data-invalid={!!errors.password}>
-            <FieldLabel
-              htmlFor="password"
-              className="font-heading font-semibold"
-            >
-              Password
-            </FieldLabel>
+            <div className="flex items-baseline justify-between">
+              <FieldLabel
+                htmlFor="password"
+                className="font-heading font-semibold"
+              >
+                Password
+              </FieldLabel>
+              <Link
+                to="/forgot-password"
+                className="rounded-sm font-heading text-sm font-semibold text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <InputGroup className="h-12 bg-white">
               <InputGroupAddon>
                 <Lock aria-hidden className="size-5 text-gray-400" />

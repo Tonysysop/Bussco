@@ -276,12 +276,15 @@ describe("LoginPage", () => {
     expect(toggle).toHaveAccessibleName("Hide password")
   })
 
-  it("links to signup and to nothing that doesn't exist", async () => {
+  it("links to password recovery and signup, and to nothing that doesn't exist", async () => {
     stubFetch(SIGNED_OUT)
     await renderRoute("/login")
     await screen.findByRole("heading", { name: "Welcome back" })
     const links = [...document.querySelectorAll("a")]
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/signup"])
+    expect(links.map((a) => a.getAttribute("href"))).toEqual([
+      "/forgot-password",
+      "/signup",
+    ])
     expect(screen.queryByText(/Remember me/i)).not.toBeInTheDocument()
   })
 

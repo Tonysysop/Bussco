@@ -2,9 +2,7 @@ import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
 import {
   ArrowRight,
-  Circle,
   CircleAlert,
-  CircleCheck,
   Eye,
   EyeOff,
   Info,
@@ -16,6 +14,7 @@ import { Link, useNavigate } from "react-router"
 import { z } from "zod"
 
 import { AuthLayout } from "@/components/auth-layout"
+import { PasswordRuleHints } from "@/components/password-rule-hints"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,7 +32,6 @@ import {
 } from "@/components/ui/input-group"
 import { ApiError, apiErrorMessage, apiPost } from "@/lib/api"
 import {
-  passwordRules,
   signupSchema,
   type SignupFields,
   type SignupInput,
@@ -251,28 +249,7 @@ export function SignupPage() {
               </InputGroupAddon>
             </InputGroup>
             <FieldError id="password-error" errors={errorList("password")} />
-            <FieldDescription id="password-hint" className="text-xs">
-              {/* The 72-byte limit only appears once a long multibyte password breaks it. */}
-              {passwordRules
-                .filter((rule, i) => i === 0 || !rule.test(values.password))
-                .map((rule) => {
-                  const met = rule.test(values.password)
-                  const Icon = met ? CircleCheck : Circle
-                  return (
-                    <span
-                      key={rule.label}
-                      data-met={met}
-                      className="flex items-center gap-1.5 text-gray-500 data-[met=true]:text-green-700"
-                    >
-                      <Icon aria-hidden className="size-3.5 shrink-0" />
-                      {rule.label}
-                      <span className="sr-only">
-                        {met ? "(met)" : "(not met)"}
-                      </span>
-                    </span>
-                  )
-                })}
-            </FieldDescription>
+            <PasswordRuleHints password={values.password} />
           </Field>
 
           {/* Terms and Privacy pages don't exist yet, so they are plain text, not links. */}

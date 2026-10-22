@@ -59,3 +59,13 @@ export const verifyEmailSchema = z.object({
   email: signupSchema.shape.email,
   code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
 })
+
+// Rails only sees `password`; the confirmation is checked here alone.
+export const resetPasswordSchema = z
+  .object({ password: passwordSchema, confirmation: z.string() })
+  .refine((values) => values.password === values.confirmation, {
+    path: ["confirmation"],
+    message: "Passwords don't match",
+  })
+
+export type ResetPasswordInput = z.input<typeof resetPasswordSchema>

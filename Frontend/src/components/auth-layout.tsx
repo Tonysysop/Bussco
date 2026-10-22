@@ -1,8 +1,13 @@
-import { CircleHelp, ShieldCheck } from "lucide-react"
+import { ArrowLeft, CircleHelp, ShieldCheck } from "lucide-react"
+import { Link } from "react-router"
 
 import logo from "@/assets/bussco.png"
 
 const LOGO_ALT = "BUA Senior Staff Multipurpose Cooperative Society"
+
+// Brand-panel copy for the three password recovery screens.
+export const RECOVERY_INTRO =
+  "Recover access to your cooperative account and continue managing your membership, savings and loans."
 
 // Split-screen shell from design-reference/stitch/Signup.png: brand panel left, form panel right.
 export function AuthLayout({
@@ -113,5 +118,19 @@ export function AuthLayout({
         </footer>
       </main>
     </div>
+  )
+}
+
+export function BackToSignIn() {
+  return (
+    <p className="mt-6 text-center text-sm">
+      <Link
+        to="/login"
+        className="inline-flex items-center gap-1.5 rounded-sm font-heading font-semibold text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <ArrowLeft aria-hidden className="size-4" />
+        Back to Sign In
+      </Link>
+    </p>
   )
 }
