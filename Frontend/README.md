@@ -29,9 +29,16 @@ npm run build
 
 | Path | Page |
 |------|------|
-| `/` | redirects to `/signup` |
-| `/signup` | registration (`POST /api/v1/auth/registrations`) |
-| `/verify-email` | placeholder confirming registration; the OTP screen comes in a later increment |
+| `/` | redirects to `/login` |
+| `/login` | sign in (`POST /api/v1/auth/session`); a signed-in member goes to `/apply` |
+| `/signup` | registration (`POST /api/v1/auth/registrations`); a signed-in member goes to `/apply` |
+| `/verify-email` | six-digit email verification code, with resend |
+| `/forgot-password` | request a password reset code (`POST /api/v1/auth/password_resets`, always 202) |
+| `/reset-code` | verify the reset code (`POST …/password_resets/verify`); needs the email in router state |
+| `/reset-password` | set a new password (`PATCH …/password_resets`); Rails' session cookie, not the router, authorizes it |
+| `/apply` | signed-in placeholder; signed out goes to `/login` |
+
+Signed-in state comes only from `meQuery` (`GET /api/v1/auth/me`; a 401 resolves to `null`).
 
 ## API client (`src/lib/api.ts`)
 
@@ -48,5 +55,6 @@ authoritative and its 422 errors are shown under the matching fields.
 
 - Full name: trimmed, 1–120 characters. Email: trimmed, lowercased, valid, ≤ 254 characters.
 - Password: at least 12 characters (Unicode code points, as Ruby counts) and at most 72 UTF-8 bytes
-  (bcrypt's limit). No complexity rules. `passwordRules` also drives the live password indicator —
-  reuse it for the password-reset form.
+  (bcrypt's limit). No complexity rules. `passwordRules` drives the live indicator
+  (`PasswordRuleHints`) on signup and password reset; `resetPasswordSchema` adds the confirmation
+  match, which the reset page also uses for its live "Passwords match" feedback.

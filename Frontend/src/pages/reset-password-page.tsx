@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CircleAlert,
   CircleCheck,
+  CircleX,
   Eye,
   EyeOff,
   Lock,
@@ -54,6 +55,7 @@ export function ResetPasswordPage() {
   })
   const [errors, setErrors] = useState<Errors>({})
   const [shown, setShown] = useState({ password: false, confirmation: false })
+  const [editingConfirmation, setEditingConfirmation] = useState(false)
 
   // The reset authorization travels only in Rails' HttpOnly session cookie, set when the code
   // verified; Rails alone decides whether this request may change the password.
@@ -131,8 +133,25 @@ export function ResetPasswordPage() {
       </AuthLayout>
     )
 
+  // Password errors show on the field; any other rejection, a 422 included, needs the alert.
   const formError =
-    reset.error && !errorBody(reset.error) && apiErrorMessage(reset.error)
+    reset.error &&
+    !errorBody(reset.error)?.errors?.password &&
+    apiErrorMessage(reset.error)
+
+  // Live feedback from the submit schema's own match rule. A match shows at once; a mismatch only
+  // while the user isn't typing in the confirmation. A submit error replaces it.
+  const mismatch = resetPasswordSchema
+    .safeParse(values)
+    .error?.issues.find((issue) => issue.path[0] === "confirmation")
+  const matchHint =
+    !values.confirmation || errors.confirmation
+      ? null
+      : !mismatch
+        ? { met: true, message: "Passwords match" }
+        : editingConfirmation
+          ? null
+          : { met: false, message: mismatch.message }
 
   function update(field: Fields, value: string) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -176,13 +195,14 @@ export function ResetPasswordPage() {
           autoComplete="new-password"
           value={values[field]}
           onChange={(event) => update(field, event.target.value)}
+          {...(field === "confirmation" && {
+            onFocus: () => setEditingConfirmation(true),
+            onBlur: () => setEditingConfirmation(false),
+          })}
           aria-invalid={errors[field] ? true : undefined}
           aria-required
           aria-describedby={
-            [
-              errors[field] && `${field}-error`,
-              field === "password" && "password-hint",
-            ]
+            [errors[field] && `${field}-error`, `${field}-hint`]
               .filter(Boolean)
               .join(" ") || undefined
           }
@@ -238,7 +258,29 @@ export function ResetPasswordPage() {
             <PasswordRuleHints password={values.password} />
           </div>
 
-          {passwordField("confirmation", "Confirm New Password")}
+          <div className="flex flex-col gap-2">
+            {passwordField("confirmation", "Confirm New Password")}
+            {/* Always rendered, so screen readers announce changes; min-h stops the form jumping. */}
+            <p
+              id="confirmation-hint"
+              aria-live="polite"
+              className="min-h-4 text-xs"
+            >
+              {matchHint && (
+                <span
+                  data-met={matchHint.met}
+                  className="flex items-center gap-1.5 text-destructive data-[met=true]:text-green-700"
+                >
+                  {matchHint.met ? (
+                    <CircleCheck aria-hidden className="size-3.5 shrink-0" />
+                  ) : (
+                    <CircleX aria-hidden className="size-3.5 shrink-0" />
+                  )}
+                  {matchHint.message}
+                </span>
+              )}
+            </p>
+          </div>
 
           <Button
             type="submit"

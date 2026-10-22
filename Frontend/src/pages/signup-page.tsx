@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   ArrowRight,
   CircleAlert,
@@ -10,10 +10,10 @@ import {
   Mail,
   User,
 } from "lucide-react"
-import { Link, useNavigate } from "react-router"
+import { Link, Navigate, useNavigate } from "react-router"
 import { z } from "zod"
 
-import { AuthLayout } from "@/components/auth-layout"
+import { AuthLayout, SessionStatus } from "@/components/auth-layout"
 import { PasswordRuleHints } from "@/components/password-rule-hints"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { ApiError, apiErrorMessage, apiPost } from "@/lib/api"
+import { ApiError, apiErrorMessage, apiPost, meQuery } from "@/lib/api"
 import {
   signupSchema,
   type SignupFields,
@@ -72,6 +72,7 @@ function errorState(error: Error): {
 
 export function SignupPage() {
   const navigate = useNavigate()
+  const me = useQuery(meQuery)
   const [values, setValues] = useState<SignupInput>({
     full_name: "",
     email: "",
@@ -92,6 +93,15 @@ export function SignupPage() {
       }),
     onError: (error) => setErrors(errorState(error).fields),
   })
+
+  // A signed-in member already has an account.
+  if (me.data) return <Navigate to="/apply" replace />
+  if (me.data === undefined)
+    return (
+      <AuthLayout>
+        <SessionStatus me={me} />
+      </AuthLayout>
+    )
 
   const formError = registration.error && errorState(registration.error).form
 

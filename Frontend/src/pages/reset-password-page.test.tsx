@@ -82,6 +82,100 @@ describe("ResetPasswordPage", () => {
     expect(csrfHeader(login)).toBe("rotated")
   })
 
+  describe("live confirmation feedback", () => {
+    const hint = () => document.getElementById("confirmation-hint")!
+
+    it("is linked to the confirmation and announced politely", async () => {
+      await renderRoute("/reset-password")
+      expect(confirmationInput()).toHaveAttribute(
+        "aria-describedby",
+        "confirmation-hint"
+      )
+      expect(hint()).toHaveAttribute("aria-live", "polite")
+      expect(hint()).toBeEmptyDOMElement()
+    })
+
+    it("confirms a match immediately, even mid-edit", async () => {
+      await renderRoute("/reset-password")
+      const user = userEvent.setup()
+      await user.type(passwordInput(), PASSWORD)
+
+      await user.type(confirmationInput(), PASSWORD.slice(0, -1))
+      expect(confirmationInput()).toHaveFocus()
+      expect(hint()).toBeEmptyDOMElement()
+      await user.type(confirmationInput(), PASSWORD.slice(-1))
+      expect(confirmationInput()).toHaveFocus()
+      expect(hint()).toHaveTextContent("Passwords match")
+    })
+
+    it("flags a mismatch on leaving, hides it while correcting, and flags it again on leaving", async () => {
+      await renderRoute("/reset-password")
+      const user = userEvent.setup()
+      await user.type(passwordInput(), PASSWORD)
+
+      // Even a wrong character is not flagged while typing.
+      await user.type(confirmationInput(), "correct horsx")
+      expect(hint()).toBeEmptyDOMElement()
+
+      // Mismatch after blur.
+      await user.tab()
+      expect(hint()).toHaveTextContent("Passwords don't match")
+
+      // Returning to edit an incorrect confirmation hides the warning.
+      await user.click(confirmationInput())
+      expect(hint()).toBeEmptyDOMElement()
+
+      // Still hidden during the correction.
+      await user.keyboard("{Backspace}")
+      await user.type(confirmationInput(), "e batter")
+      expect(hint()).toBeEmptyDOMElement()
+
+      // Leaving again while still wrong flags it again.
+      await user.tab()
+      expect(hint()).toHaveTextContent("Passwords don't match")
+
+      // Finishing the correction confirms the match at once.
+      await user.type(confirmationInput(), "y")
+      expect(hint()).toHaveTextContent("Passwords match")
+    })
+
+    it("updates when the password changes after a match", async () => {
+      await renderRoute("/reset-password")
+      const user = userEvent.setup()
+      await user.type(passwordInput(), PASSWORD)
+      await user.type(confirmationInput(), PASSWORD)
+      expect(hint()).toHaveTextContent("Passwords match")
+
+      await user.type(passwordInput(), "!")
+      expect(hint()).toHaveTextContent("Passwords don't match")
+    })
+
+    it("hands over to the submit-time error without repeating it", async () => {
+      const fetchMock = stubFetch()
+      await renderRoute("/reset-password")
+      const user = userEvent.setup()
+      await user.type(passwordInput(), PASSWORD)
+      await user.type(confirmationInput(), "correct horse")
+      await user.tab()
+      expect(hint()).toHaveTextContent("Passwords don't match")
+
+      await user.click(resetButton())
+      expect(screen.getAllByText("Passwords don't match")).toHaveLength(1)
+      expect(hint()).toBeEmptyDOMElement()
+      expect(confirmationInput()).toHaveAttribute("aria-invalid", "true")
+      expect(confirmationInput()).toHaveAttribute(
+        "aria-describedby",
+        "confirmation-error confirmation-hint"
+      )
+      expect(callsTo(fetchMock, PATH, "PATCH")).toHaveLength(0)
+
+      // Editing clears the submit error; the live rules take over again.
+      await user.type(confirmationInput(), " battery")
+      expect(screen.queryByText("Passwords don't match")).toBeNull()
+      expect(hint()).toHaveTextContent("Passwords match")
+    })
+  })
+
   it("requires matching passwords and Rails' length rules before sending", async () => {
     const fetchMock = stubFetch()
     await renderRoute("/reset-password")
@@ -103,7 +197,7 @@ describe("ResetPasswordPage", () => {
     expect(screen.getByText("Passwords don't match")).toBeInTheDocument()
     expect(confirmationInput()).toHaveAttribute(
       "aria-describedby",
-      "confirmation-error"
+      "confirmation-error confirmation-hint"
     )
 
     // 25 three-byte characters: 25 characters but 75 bytes, over bcrypt's 72.
@@ -170,6 +264,11 @@ describe("ResetPasswordPage", () => {
 
   it.each([
     [{ status: 500 }, "Something went wrong on our side. Please try again."],
+    // A 422 the page has no field for must still say something.
+    [
+      { status: 422, body: { errors: { full_name: ["is too long"] } } },
+      "Something went wrong on our side. Please try again.",
+    ],
     [
       new TypeError("Failed to fetch"),
       "We couldn't reach the server. Check your connection and try again.",

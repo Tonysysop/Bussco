@@ -12,6 +12,15 @@ const FILLED = {
   password: "correct horse battery",
 }
 
+const SIGNED_OUT = { status: 401, body: { error: "unauthenticated" } }
+
+// The form appears once /me says nobody is signed in.
+async function renderSignup() {
+  const router = await renderRoute("/signup")
+  await screen.findByRole("heading", { name: "Create your account" })
+  return router
+}
+
 const registrationCalls = (fetchMock: ReturnType<typeof stubFetch>) =>
   callsTo(fetchMock, "/api/v1/auth/registrations")
 
@@ -35,13 +44,15 @@ const submitButton = () =>
 describe("SignupPage", () => {
   it("registers with the CSRF token and normalized values, then shows the verify-email page", async () => {
     let finish!: (response: Response) => void
-    const fetchMock = stubFetch()
+    const fetchMock = stubFetch(SIGNED_OUT)
     fetchMock.mockImplementation(async (path: string) =>
-      path === "/api/v1/csrf"
-        ? json({ status: 200, body: { csrf_token: TOKEN } })
-        : new Promise<Response>((resolve) => (finish = resolve))
+      path === "/api/v1/auth/me"
+        ? json(SIGNED_OUT)
+        : path === "/api/v1/csrf"
+          ? json({ status: 200, body: { csrf_token: TOKEN } })
+          : new Promise<Response>((resolve) => (finish = resolve))
     )
-    const router = await renderRoute("/signup")
+    const router = await renderSignup()
 
     await fillAndSubmit()
 
@@ -49,8 +60,12 @@ describe("SignupPage", () => {
       expect(submitButton()).toHaveTextContent("Creating account…")
     )
     expect(submitButton()).toBeDisabled()
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/csrf")
-    const [path, init] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(fetchMock.mock.calls.map(([p]) => p)).toEqual([
+      "/api/v1/auth/me",
+      "/api/v1/csrf",
+      "/api/v1/auth/registrations",
+    ])
+    const [path, init] = fetchMock.mock.calls[2] as [string, RequestInit]
     expect(path).toBe("/api/v1/auth/registrations")
     expect(init).toMatchObject({
       method: "POST",
@@ -85,8 +100,8 @@ describe("SignupPage", () => {
   })
 
   it("shows Zod errors under each field and sends nothing", async () => {
-    const fetchMock = stubFetch()
-    await renderRoute("/signup")
+    const fetchMock = stubFetch(SIGNED_OUT)
+    await renderSignup()
 
     await fillAndSubmit({ full_name: "", email: "nope", password: "short" })
 
@@ -99,12 +114,14 @@ describe("SignupPage", () => {
       "aria-invalid",
       "true"
     )
-    expect(fetchMock).not.toHaveBeenCalled()
+    // Only the session check: no CSRF token, no registration.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(registrationCalls(fetchMock)).toHaveLength(0)
   })
 
   it("re-checks an errored field as the user types and clears it once valid", async () => {
-    stubFetch()
-    await renderRoute("/signup")
+    stubFetch(SIGNED_OUT)
+    await renderSignup()
 
     const user = await fillAndSubmit({ full_name: "", email: "nope" })
     const email = screen.getByLabelText(/Work Email Address/)
@@ -122,11 +139,11 @@ describe("SignupPage", () => {
   })
 
   it("clears a Rails error once its field is edited", async () => {
-    stubFetch({
+    stubFetch(SIGNED_OUT, {
       status: 422,
       body: { errors: { email: ["has already been taken"] } },
     })
-    await renderRoute("/signup")
+    await renderSignup()
 
     const user = await fillAndSubmit()
     await screen.findByText("Email has already been taken")
@@ -138,8 +155,8 @@ describe("SignupPage", () => {
   })
 
   it("updates the password indicator with the same rules", async () => {
-    stubFetch()
-    await renderRoute("/signup")
+    stubFetch(SIGNED_OUT)
+    await renderSignup()
     const user = userEvent.setup()
     const chip = () =>
       screen.getByText("At least 12 characters").closest("[data-met]")!
@@ -166,7 +183,7 @@ describe("SignupPage", () => {
   })
 
   it("shows Rails validation errors under their fields as Rails' full messages", async () => {
-    stubFetch({
+    stubFetch(SIGNED_OUT, {
       status: 422,
       body: {
         errors: {
@@ -177,7 +194,7 @@ describe("SignupPage", () => {
         },
       },
     })
-    await renderRoute("/signup")
+    await renderSignup()
 
     await fillAndSubmit()
 
@@ -199,11 +216,11 @@ describe("SignupPage", () => {
   })
 
   it("shows a duplicate email under the email field and keeps the other values", async () => {
-    stubFetch({
+    stubFetch(SIGNED_OUT, {
       status: 422,
       body: { errors: { email: ["has already been taken"] } },
     })
-    await renderRoute("/signup")
+    await renderSignup()
 
     await fillAndSubmit()
 
@@ -218,10 +235,11 @@ describe("SignupPage", () => {
 
   it("on a CSRF rejection, says so and fetches a new token for the next attempt", async () => {
     const fetchMock = stubFetch(
+      SIGNED_OUT,
       { status: 403, body: { error: "invalid_csrf_token" } },
       { status: 201, body: { user: { email: "ada@example.com" } } }
     )
-    await renderRoute("/signup")
+    await renderSignup()
 
     const user = await fillAndSubmit()
     expect(
@@ -253,8 +271,8 @@ describe("SignupPage", () => {
   ])(
     "shows an alert for API failures (%#) and lets the user retry",
     async (reply, message) => {
-      stubFetch(reply)
-      await renderRoute("/signup")
+      stubFetch(SIGNED_OUT, reply)
+      await renderSignup()
 
       await fillAndSubmit()
 
@@ -266,9 +284,53 @@ describe("SignupPage", () => {
     }
   )
 
-  it("links only to sign in, not to pages that don't exist", async () => {
-    stubFetch()
+  it("sends a signed-in member to /apply instead of showing the form", async () => {
+    const signedIn = {
+      status: 200,
+      body: { user: { id: 1, full_name: "Ada Obi", email: "ada@example.com" } },
+    }
+    const fetchMock = stubFetch(signedIn, signedIn)
+    const router = await renderRoute("/signup")
+
+    expect(
+      await screen.findByRole("heading", { name: "Welcome, Ada Obi" })
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe("/apply")
+    expect(registrationCalls(fetchMock)).toHaveLength(0)
+  })
+
+  it("shows a status, not the form, while checking the session", async () => {
+    stubFetch(SIGNED_OUT)
     await renderRoute("/signup")
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking your sign-in…"
+    )
+    expect(screen.queryByLabelText(/Full Name/)).toBeNull()
+    expect(
+      await screen.findByRole("heading", { name: "Create your account" })
+    ).toBeInTheDocument()
+  })
+
+  it("offers a retry instead of the form when the session check fails", async () => {
+    stubFetch({ status: 500 }, SIGNED_OUT)
+    await renderRoute("/signup")
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Something went wrong on our side."
+    )
+    expect(screen.queryByLabelText(/Full Name/)).toBeNull()
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Try again" }))
+    expect(
+      await screen.findByRole("heading", { name: "Create your account" })
+    ).toBeInTheDocument()
+  })
+
+  it("links only to sign in, not to pages that don't exist", async () => {
+    stubFetch(SIGNED_OUT)
+    await renderSignup()
     expect(screen.getByText(/Terms of Service/)).toBeInTheDocument()
     const links = [...document.querySelectorAll("a")]
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["/login"])

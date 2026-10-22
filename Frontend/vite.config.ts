@@ -21,5 +21,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",
+    // Each file's first test pays the cold import of every route (~1.5 s alone), which passed 5 s
+    // on a loaded machine. Still short enough to catch a real hang.
+    testTimeout: 15_000,
   },
 })
