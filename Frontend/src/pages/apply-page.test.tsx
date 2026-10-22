@@ -256,20 +256,10 @@ describe("ApplyPage: resume and navigation", () => {
   })
 
   it("moves through stages without forms yet with Back and Continue only, saving nothing", async () => {
-    const fetchMock = stubFetch(SIGNED_IN, draft({}, "next_of_kin"))
-    const router = await renderRoute("/apply/next_of_kin")
+    const fetchMock = stubFetch(SIGNED_IN, draft({}, "savings"))
+    const router = await renderRoute("/apply/savings")
     const user = userEvent.setup()
-    await screen.findByRole("heading", { name: "Next of kin" })
-
-    for (const [title, path] of [
-      ["Monthly contribution", "/apply/savings"],
-    ] as const) {
-      await user.click(screen.getByRole("link", { name: /^Continue/ }))
-      expect(
-        await screen.findByRole("heading", { name: title })
-      ).toBeInTheDocument()
-      expect(router.state.location.pathname).toBe(path)
-    }
+    await screen.findByRole("heading", { name: "Monthly contribution" })
     expect(
       screen.getByRole("link", { name: /Continue to review/ })
     ).toBeInTheDocument()
@@ -290,9 +280,9 @@ describe("ApplyPage: resume and navigation", () => {
   })
 
   it("has one heading, an ordered step list and keyboard order Back then Continue", async () => {
-    stubFetch(SIGNED_IN, draft({}, "next_of_kin"))
-    await renderRoute("/apply/next_of_kin")
-    await screen.findByRole("heading", { name: "Next of kin" })
+    stubFetch(SIGNED_IN, draft({}, "savings"))
+    await renderRoute("/apply/savings")
+    await screen.findByRole("heading", { name: "Monthly contribution" })
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1)
     expect(screen.getByRole("list").tagName).toBe("OL")

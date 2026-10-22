@@ -3,6 +3,7 @@ export const ME = "/api/v1/auth/me"
 export const APP = "/api/v1/membership/application"
 export const EMPLOYMENT = `${APP}/stages/employment`
 export const PERSONAL = `${APP}/stages/personal`
+export const NEXT_OF_KIN = `${APP}/stages/next_of_kin`
 export const PHOTO = `${APP}/passport_photo`
 
 export const USER = {
