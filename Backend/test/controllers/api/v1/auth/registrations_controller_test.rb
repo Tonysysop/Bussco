@@ -38,13 +38,13 @@ class Api::V1::Auth::RegistrationsControllerTest < ActionDispatch::IntegrationTe
   end
 
   test "privileged attributes in the request are ignored" do
-    register(role: "admin", admin: true, sap_id: "SAP-1", account_status: "disabled", membership_status: "approved",
+    register(role: "admin", admin: true, admin_role: "super_admin", sap_id: "SAP-1", account_status: "disabled", membership_status: "approved",
              email_verified_at: Time.current.iso8601, id: 999, password_digest: "x")
 
     assert_response :created
     user = User.sole
-    assert_equal [ nil, "active", "not_started", nil ],
-      [ user.email_verified_at, user.account_status, user.membership_status, user.sap_id ]
+    assert_equal [ nil, "active", "not_started", nil, nil ],
+      [ user.email_verified_at, user.account_status, user.membership_status, user.sap_id, user.admin_role ]
     assert_not_equal 999, user.id
     assert user.authenticate(PASSWORD)
   end

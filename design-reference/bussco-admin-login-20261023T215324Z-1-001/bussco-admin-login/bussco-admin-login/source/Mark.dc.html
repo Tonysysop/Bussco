@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BUSSCO emblem</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: {{size}}px; height: {{size}}px; display: flex; align-items: center; justify-content: center">
+<sc-if value="{{mono}}" hint-placeholder-val="{{ true }}">
+<img src="../assets/bussco-emblem-mono.png" alt="" style="display: block; width: 100%; height: 100%; object-fit: contain">
+</sc-if>
+<sc-if value="{{color}}" hint-placeholder-val="{{ false }}">
+<img src="../assets/bussco-emblem.png" alt="" style="display: block; width: 100%; height: 100%; object-fit: contain">
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"int","min":16,"max":2400,"default":400},"tone":{"editor":"enum","options":["mono","color"],"default":"mono"},"$preview":{"width":400,"height":400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const tone = this.props.tone ?? 'mono';
+    return { size: this.props.size ?? 400, mono: tone === 'mono', color: tone === 'color' };
+  }
+}
+</script>
+</body>
+</html>

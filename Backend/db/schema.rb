@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_21_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_23_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_120000) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "admin_role_changes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "previous_role"
+    t.string "new_role"
+    t.string "action", null: false
+    t.string "changed_by", null: false
+    t.datetime "created_at", null: false
+    t.index ["user_id"], name: "index_admin_role_changes_on_user_id"
+    t.check_constraint "action::text = ANY (ARRAY['bootstrap'::character varying, 'grant'::character varying, 'revoke'::character varying, 'emergency_replace'::character varying]::text[])", name: "admin_role_changes_action_allowed"
+    t.check_constraint "changed_by::text !~ '^\\s*$'::text", name: "admin_role_changes_changed_by_present"
+    t.check_constraint "new_role IS NULL OR (new_role::text = ANY (ARRAY['super_admin'::character varying, 'president'::character varying, 'treasurer'::character varying]::text[]))", name: "admin_role_changes_new_role_allowed"
+    t.check_constraint "previous_role IS NULL OR (previous_role::text = ANY (ARRAY['super_admin'::character varying, 'president'::character varying, 'treasurer'::character varying]::text[]))", name: "admin_role_changes_previous_role_allowed"
+    t.check_constraint "previous_role::text IS DISTINCT FROM new_role::text", name: "admin_role_changes_changes_role"
   end
 
   create_table "membership_applications", force: :cascade do |t|
@@ -95,6 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_120000) do
     t.datetime "last_seen_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "admin", default: false, null: false
     t.index ["token_digest"], name: "index_sessions_on_token_digest", unique: true
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
@@ -130,9 +146,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_120000) do
     t.datetime "password_reset_requested_at"
     t.integer "password_reset_generation", default: 0, null: false
     t.integer "password_reset_attempts", default: 0, null: false
+    t.string "admin_role"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["sap_id"], name: "index_users_on_sap_id", unique: true
     t.check_constraint "account_status::text = ANY (ARRAY['active'::character varying, 'disabled'::character varying]::text[])", name: "users_account_status_allowed"
+    t.check_constraint "admin_role IS NULL OR (admin_role::text = ANY (ARRAY['super_admin'::character varying, 'president'::character varying, 'treasurer'::character varying]::text[]))", name: "users_admin_role_allowed"
+    t.check_constraint "admin_role IS NULL OR email_verified_at IS NOT NULL", name: "users_admin_email_verified"
     t.check_constraint "char_length(full_name::text) >= 1 AND char_length(full_name::text) <= 120 AND full_name::text !~ '^\\s|\\s$'::text", name: "users_full_name_trimmed_length"
     t.check_constraint "email::text = lower(email::text) AND char_length(email::text) <= 254 AND email::text ~ '^[^@\\s]+@[^@\\s]+$'::text", name: "users_email_normalized"
     t.check_constraint "email_verification_attempts >= 0 AND email_verification_attempts <= 5", name: "users_email_verification_attempts_range"
@@ -143,6 +162,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_21_120000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "admin_role_changes", "users"
   add_foreign_key "membership_applications", "users", on_delete: :cascade
   add_foreign_key "sessions", "users", on_delete: :cascade
 end
