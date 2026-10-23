@@ -1,0 +1,170 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Concept1-Editorial.dc.html": {
+      "h": 900,
+      "title": "Concept 1 — Editorial Minimalism (recommended)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Concept2-Executive.dc.html": {
+      "h": 900,
+      "title": "Concept 2 — Executive Workspace",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Concept3-Monogram.dc.html": {
+      "h": 900,
+      "title": "Concept 3 — Architectural Monogram",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Final-Mobile-320.dc.html": {
+      "h": 860,
+      "is_interactive": true,
+      "title": "Final — Mobile 320",
+      "w": 320,
+      "x": 2838,
+      "y": 1360
+    },
+    "Final-Mobile-390.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "Final — Mobile 390",
+      "w": 390,
+      "x": 2368,
+      "y": 1360
+    },
+    "Final-Tablet.dc.html": {
+      "h": 1024,
+      "is_interactive": true,
+      "title": "Final — Tablet 768",
+      "w": 768,
+      "x": 1520,
+      "y": 1360
+    },
+    "Main.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "Final — Desktop 1440 (interactive)",
+      "w": 1440,
+      "x": 0,
+      "y": 1360
+    },
+    "Mark.dc.html": {
+      "h": 400,
+      "title": "Component — BUSSCO emblem (watermark)",
+      "w": 400,
+      "x": 0,
+      "y": 3990
+    },
+    "State-Expired.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "State — Session expired",
+      "w": 1440,
+      "x": 4560,
+      "y": 2740
+    },
+    "State-Incorrect.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "State — Incorrect credentials",
+      "w": 1440,
+      "x": 1520,
+      "y": 2740
+    },
+    "State-Signing.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "State — Signing in",
+      "w": 1440,
+      "x": 3040,
+      "y": 2740
+    },
+    "State-Validation.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "State — Field validation",
+      "w": 1440,
+      "x": 0,
+      "y": 2740
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-23T22:30:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "s_logo": {
+      "fill": "orange",
+      "text": "Official BUSSCO emblem, cropped from the supplied lockup (never stretched: object-fit contain). Every watermark reads from this one component. Tone “mono” renders the emblem in burgundy (gold areas as a lighter tint) for a calmer watermark; “color” uses the original.",
+      "w": 380,
+      "x": 480,
+      "y": 3990
+    },
+    "s_proto": {
+      "fill": "blue",
+      "text": "Prototype behaviour: empty or malformed fields show inline validation. A valid-looking submission shows “Signing in…” for ~1.7s, then the incorrect-credentials state. It never authenticates or opens a dashboard.\n\nUse the Tweaks panel on Final to preview each state and viewport.",
+      "w": 380,
+      "x": 3240,
+      "y": 1360
+    },
+    "t_concepts": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "01 — Three concepts",
+      "w": 240,
+      "x": 0,
+      "y": -280
+    },
+    "t_final": {
+      "kind": "title1",
+      "maxW": 3160,
+      "text": "02 — Recommended: Editorial Minimalism, responsive",
+      "w": 240,
+      "x": 0,
+      "y": 1080
+    },
+    "t_logo": {
+      "kind": "title1",
+      "maxW": 1600,
+      "text": "04 — Emblem component",
+      "w": 240,
+      "x": 0,
+      "y": 3710
+    },
+    "t_states": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "03 — Interaction states",
+      "w": 240,
+      "x": 0,
+      "y": 2460
+    }
+  },
+  "order": [
+    "Concept1-Editorial.dc.html",
+    "Concept2-Executive.dc.html",
+    "Concept3-Monogram.dc.html",
+    "Main.dc.html",
+    "Final-Tablet.dc.html",
+    "Final-Mobile-390.dc.html",
+    "Final-Mobile-320.dc.html",
+    "State-Validation.dc.html",
+    "State-Incorrect.dc.html",
+    "State-Signing.dc.html",
+    "State-Expired.dc.html",
+    "Mark.dc.html"
+  ],
+  "pages": [],
+  "title": "BUSSCO — Admin Login"
+}

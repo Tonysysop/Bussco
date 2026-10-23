@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Concept 2 — Executive Workspace</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1F2937}a:hover{color:#75141A}
+</style>
+</helmet>
+<div style="position: relative; width: 1440px; height: 900px; overflow: hidden; background: #F8F9FB; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1F2937; display: flex; flex-direction: column">
+
+<header style="position: relative; z-index: 1; height: 68px; flex-shrink: 0; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; background: #FFFFFF; border-bottom: 1px solid #E5E7EB">
+<div style="display: flex; align-items: center; gap: 12px">
+<img src="../assets/bussco-emblem.png" alt="" style="display: block; width: 28px; height: 30px; object-fit: contain">
+<span style="font-size: 16px; font-weight: 600; letter-spacing: 0.08em; color: #75141A">BUSSCO</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #5B6472; padding: 4px 8px; border: 1px solid #E5E7EB; border-radius: 6px">ADMIN</span>
+</div>
+<a href="#member-portal" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M11 6l-6 6 6 6"></path></svg>Return to Member Portal</a>
+</header>
+
+<div aria-hidden="true" style="position: absolute; left: 340px; top: 80px; width: 760px; height: 760px; opacity: 0.045; pointer-events: none">
+<dc-import name="Mark" size="760" tone="color" hint-size="760px,760px"></dc-import>
+</div>
+
+<main style="position: relative; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px">
+<form style="width: 480px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 2px 4px rgba(31,41,55,0.04), 0 32px 64px -32px rgba(31,41,55,0.22); display: flex; flex-direction: column">
+<div style="padding: 32px 36px 24px; border-bottom: 1px solid #EEF0F3; display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.14em; color: #9E1B22">BUSSCO ADMINISTRATION</p>
+<h1 style="margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.015em">Welcome Back</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4B5563">Sign in to access your administrative workspace.</p>
+</div>
+<div style="padding: 28px 36px 32px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="c2-email" style="font-size: 13px; font-weight: 500">Corporate Email Address</label>
+<input id="c2-email" type="text" placeholder="name@company.com" style="height: 46px; box-sizing: border-box; padding: 0 14px; border: 1px solid #D1D5DB; border-radius: 8px; font-family: inherit; font-size: 15px; background: #FFFFFF">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="c2-pw" style="font-size: 13px; font-weight: 500">Password</label>
+<div style="position: relative">
+<input id="c2-pw" type="password" style="height: 46px; width: 100%; box-sizing: border-box; padding: 0 56px 0 14px; border: 1px solid #D1D5DB; border-radius: 8px; font-family: inherit; font-size: 15px; background: #FFFFFF">
+<button type="button" aria-label="Show password" style="position: absolute; right: 1px; top: 1px; width: 44px; height: 44px; border: 0; background: transparent; color: #5B6472; display: flex; align-items: center; justify-content: center; padding: 0"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c0-1.5 3.5-7 9-7s9 5.5 9 7-3.5 7-9 7-9-5.5-9-7z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+</div>
+<button type="button" style="margin-top: 6px; height: 50px; border: 0; border-radius: 8px; background: #9E1B22; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; font-size: 15px; font-weight: 600">Sign In to Admin Portal<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></button>
+</div>
+</form>
+<p style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5B6472"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Restricted access. Authorized administrators only.</p>
+</main>
+
+<footer style="position: relative; height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; border-top: 1px solid #E5E7EB; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #5B6472">BUA SENIOR STAFF MULTIPURPOSE COOPERATIVE SOCIETY</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

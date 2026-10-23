@@ -1,11 +1,11 @@
 # BUSSCO — pending items before production
 
-Everything below was found during increments F1.1–F2.6 and is **not done yet**, except the
+Everything below was found during increments F1.1–F2.6 and A1.1 and is **not done yet**, except the
 "Resolved" section at the end. Clear every **Blocker** before production and get a decision on
 every **Decision**. The others are known limits or planned work: either accept them in writing or
 schedule them.
 
-Last updated: 2026-10-23, after F2.6 (Review & Submission).
+Last updated: 2026-10-23, after A1.1 (Admin authentication & authorization foundation, backend).
 
 ## Blockers: infrastructure and configuration
 | # | Item | Source |
@@ -16,6 +16,9 @@ Last updated: 2026-10-23, after F2.6 (Review & Submission).
 | B4 | **HTTPS-only proxy setup:** TLS at the proxy; the app port reachable only through it; `Host` preserved and listed in `APP_HOSTS`; no rewritten `X-Forwarded-*` | `Backend/docs/auth/browser-foundations.md` |
 | B5 | **Email delivery:** `RESEND_API_KEY` and `MAIL_FROM` set (boot fails without them), with a verified sender domain. Run the skipped manual test `Backend/test/manual/resend_delivery_test.rb` with `RESEND_TEST_TO` set, and send a real verification code and a real reset code end to end. Neither has been delivered to a real inbox in testing | `Backend/docs/auth/email-verification.md`; F1.4/F1.5 walkthroughs |
 | B6 | **Legal approval of the membership declaration (pending).** The only wording is `draft-v1`, a temporary text marked `approved: false` ("DRAFT — Pending Legal Approval"). It is configured only in development and test (`config/environments/development.rb`, `test.rb`). Production reads `MEMBERSHIP_DECLARATION_VERSION` with no default and accepts only a version marked `approved: true`, so **every production submission returns `503 declaration_unavailable`** and the Review screen says submission isn't available yet. Since F2.6 the Review screen shows the text exactly as Rails sends it, labelled **DRAFT — Pending Legal Approval** while `approved` is false, and requires explicit acceptance. To go live: get the wording legally approved, add it as a **new** version in `MembershipApplication::DECLARATIONS` with `approved: true` (never edit `draft-v1`; its digest is pinned by a test), and set `MEMBERSHIP_DECLARATION_VERSION` | `Backend/docs/membership/application.md` ("Declaration") |
+
+| B7 | **Administrator MFA (required before production; not built in A1.1).** Admin login is email + password only, and an admin's password can be reset by anyone who controls their mailbox (admin accounts come from public registration). Add a second factor (e.g. TOTP) for admin login, and step-up re-authentication for role management once the Super Admin portal exists | `Backend/docs/auth/admin-access.md` ("Implications of using public registration") |
+| B8 | **First Super Admin provisioning.** Production has no admin until an operator runs `bin/rails admin:bootstrap EMAIL=… OPERATOR=…` (works **once**). Before running it, confirm out of band who the person is, that they hold the office, and that they created and verified this account. Decide who may run server tasks in production (they can also run the emergency `admin:replace_super_admin`) | `Backend/docs/auth/admin-access.md` ("Provisioning runbook") |
 
 ## Decisions needed: product, legal and policy
 | # | Item | Notes |
@@ -30,6 +33,7 @@ Last updated: 2026-10-23, after F2.6 (Review & Submission).
 | D10 | **Phone numbers assume Nigeria.** The Stage 2 design shows a country picker beside "+234". F2.3 uses a fixed `+234` prefix: a local number (`0803…` or `803…`) is saved as `+234803…`, and a number typed starting with `+` is saved as typed (the prefix is hidden for it). Decide whether a real country picker is needed | F2.3 |
 | D9 | **Application reference numbers.** The designs show two formats ("BUSSCO-2026-08492" in `Stage5.html`, "APP-2025-08492" in `Final-stage.html`), but the API has no reference at all, so the UI shows none. Decide whether applicants need one; if so, Rails must generate it | Graphify design extraction, F2.1 |
 | D8 | **Passport photo EXIF metadata** (possibly GPS location) is stored as uploaded. Stripping it needs `image_processing` plus libvips or ImageMagick | `Backend/docs/membership/application.md` ("Photo") |
+| D12 | **What each admin role may do.** A1.1 authenticates Super Admin, President and Treasurer but grants **no** approval or financial authority to any of them. Super Admin will manage admin roles (portal increment); membership and financial approval rules (who approves, single or dual sign-off) are A2 and must be specified, not inferred | `Backend/docs/auth/admin-access.md` ("Exclusions"), `Backend/design.md` |
 | D11 | **Contributions: frontend choices, not cooperative policy (F2.5).** *Rails policy* (authoritative): minimum ₦30,000 (`MINIMUM_MONTHLY_CONTRIBUTION_KOBO`, sent as `policy`), money in integer kobo, start date on the 1st of a month and next month's 1st or later at submission, ₦10,000 registration fee shown only (never stored or collected), and no maximum beyond the bigint column. *Frontend decisions* (confirm or change): whole naira only (Rails accepts any whole kobo; a saved amount with kobo reopens as e.g. "30,000.50" and must be re-entered); an input cap of ₦9,999,999,999 (technical, not policy); start dates offered for 12 months ahead; and the payroll wording ("Once your membership is approved and payroll arrangements are in place… Submitting this application doesn't start any deductions. Any future loan repayments are separate"), which follows the draft declaration and `design.md` but has no approved copy | F2.5 |
 
 ## Planned work not built yet (the app is incomplete without it)
@@ -40,6 +44,8 @@ Last updated: 2026-10-23, after F2.6 (Review & Submission).
 | P4 | **Logout UI** (member dashboard sidebar). It **must** call `forgetSession(queryClient)` from `Frontend/src/lib/api.ts` after `DELETE /api/v1/auth/session`, so no cached user or application outlives the session | Dashboard increment |
 | P5 | **Membership approval, administrative review, member dashboard** (Rails has only `not_started` and `awaiting_approval`) | Later increments |
 | P6 | **Authenticated password change** | Planned in `Backend/docs/auth/README.md` |
+| P7 | **Admin frontend** (admin login screen and dashboard). A1.1 is backend only: `POST/DELETE /api/v1/admin/auth/session`, `GET /api/v1/admin/auth/me`. Like member logout, admin logout UI must clear cached admin data | Next admin increments |
+| P8 | **Super Admin management portal** (assign, switch and revoke President/Treasurer; list admins; view audit history), behind `require_admin_role(:super_admin)`, with no self-change. Until then, President/Treasurer roles are managed by the interim `admin:grant`/`admin:revoke` tasks. Audit rows will need the acting admin's id | `Backend/docs/auth/admin-access.md` ("Authorization foundation") |
 
 ## Known limits and risks (accept or fix)
 | # | Item | Detail |
@@ -53,6 +59,9 @@ Last updated: 2026-10-23, after F2.6 (Review & Submission).
 | R9 | **The date picker popover is non-modal (decided)** | Accepted for F2.3: no focus-trapping dialog. Checked in Chromium at 768px: Enter opens on the chosen day (or today); arrows, Home/End and PageUp/PageDown move between days and months; Enter picks; **Escape closes and returns focus to the date field**; **Tab from the days closes the calendar and moves on to the next field** (Sex); Shift+Tab reaches the month and year dropdowns. No keyboard trap. **Correction (F2.5):** axe 4.x with the calendar *open* reports `aria-dialog-name` (the popover has no accessible name) and `label-content-name-mismatch` on the day buttons (react-day-picker names them "Sunday, November 1st, 2026" while showing "1"). Both appear on the F2.3 date of birth picker too, so they predate F2.5; with the calendar closed there are no violations at 375, 768 or 1280px. Naming the popover is a one-attribute fix. Revisit only if an accessibility audit asks for the WAI-ARIA modal date-picker dialog |
 | R10 | **Rails' minimum-contribution message is in kobo** | A Rails `422` on `monthly_contribution_kobo` would read "Monthly contribution must be greater than or equal to 3000000". The form checks the minimum first, using the `policy` in the same application response, so users see it only if the policy changes while their page is open. A custom message in the model would close it |
 | R4 | **Bundle size** | The production JS is 751 kB (230 kB gzipped) after F2.6. The shadcn Calendar date picker (react-day-picker, which brings date-fns) added about 170 kB (54 kB gzipped); lazy-loading the stage forms would keep it off the sign-in pages. Vite warns about chunks over 500 kB. Consider route-level code splitting before the dashboard grows it |
+
+| R11 | **The admin role audit is append-only only through the application** | `AdminRoleChange` rows are read-only in Active Record, and a validation rejects any role change except `User#change_admin_role!`. Privileged database access (SQL, `update_columns`, a Rails console) can still change roles without an audit row, or edit and delete audit rows. For tamper resistance, restrict production DB grants and/or ship audit rows off the box |
+| R12 | **Admin login and member tabs share the CSRF session** | Admin and member auth sessions are isolated (separate cookies and rows), but both logins rotate the one Rails CSRF session, so an open member tab gets one `403` and then fetches a new token (as in R3) |
 
 ## Verification still to do
 | # | Item |

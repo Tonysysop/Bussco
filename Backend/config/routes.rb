@@ -20,6 +20,14 @@ Rails.application.routes.draw do
         get "me", to: "sessions#show"
       end
 
+      # Admin login only; roles are provisioned by operators (lib/tasks/admin.rake), never through the API.
+      namespace :admin do
+        namespace :auth do
+          resource :session, only: [ :create, :destroy ]
+          get "me", to: "sessions#show"
+        end
+      end
+
       namespace :membership do
         resource :application, only: [ :show, :create ] do
           patch "stages/:stage", action: :update_stage, as: :stage

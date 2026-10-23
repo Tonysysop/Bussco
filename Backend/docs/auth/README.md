@@ -1,7 +1,7 @@
 # Authentication — index
 
-Status: increments 0–3 and 5 (browser foundations, registration, email verification, member
-sessions, password recovery) are **implemented**; admin access and password change are
+Status: increments 0–3, 5 and 6 (browser foundations, registration, email verification, member
+sessions, password recovery, admin authentication) are **implemented**; password change is
 **planned**. Members can register, verify their email (which signs in the registering
 browser), log in, log out and reset a forgotten password by emailed code. Increment 4 is the
 membership application ([../membership/application.md](../membership/application.md)).
@@ -15,7 +15,7 @@ Read only the spec for the increment you are implementing.
 | 2 | Email verification by six-digit code (**implemented**) | [email-verification.md](email-verification.md) | 0, 1 |
 | 3 | Member sessions (login, logout, current user) (**implemented**) | [sessions.md](sessions.md) | 0, 1, 2 |
 | 5 | Password recovery by six-digit code (**implemented**) | [password-recovery.md](password-recovery.md) | 0, 1, 2, 3 |
-| 6 | Admin login + controlled provisioning | [admin-access.md](admin-access.md) | 0, 2, 3 |
+| 6 | Admin login + controlled provisioning (A1.1, **implemented**; backend only) | [admin-access.md](admin-access.md) | 0, 2, 3, 5 |
 | 7 | Password change (authenticated) | see "Password change" below | 0, 1, 3, 5 |
 
 Each increment ships with its migrations, tests and doc updates, and leaves

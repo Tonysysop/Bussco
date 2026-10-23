@@ -13,11 +13,12 @@ Implemented endpoints:
 | `POST /api/v1/auth/registrations` | Public registration: creates an unverified, non-member account; no login ([spec](docs/auth/registration.md)) |
 | `PATCH`/`POST /api/v1/auth/email_verification` | Email verification by six-digit code; signs in the registering browser ([spec](docs/auth/email-verification.md)) |
 | `POST`/`DELETE /api/v1/auth/session`, `GET /api/v1/auth/me` | Login, logout, current user ([spec](docs/auth/sessions.md)) |
+| `POST`/`DELETE /api/v1/admin/auth/session`, `GET /api/v1/admin/auth/me` | Admin login, logout, current admin on the separate `bussco_admin` cookie; roles are provisioned only by `bin/rails admin:*` tasks ([spec](docs/auth/admin-access.md)) |
 | `/api/v1/membership/application` (+ `/stages/:stage`, `/passport_photo`, `/submission`) | The signed-in user's five-stage membership application: drafts, photo, submission ([spec](docs/membership/application.md)) |
 
 Unsafe requests (POST/PUT/PATCH/DELETE) need a same-origin `Origin` header and an
 `X-CSRF-Token` header; see [docs/auth/browser-foundations.md](docs/auth/browser-foundations.md).
-Password recovery and admin access are still planned (see the auth index).
+Password change is still planned (see the auth index).
 
 Rate-limit counters: in-process memory in development; Solid Cache on the primary
 PostgreSQL database in test and production (`solid_cache_entries`, created by a normal migration).

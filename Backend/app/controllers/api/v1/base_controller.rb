@@ -45,22 +45,27 @@ module Api
         value if value.is_a?(String) && !value.include?("\0")
       end
 
-      # Member login (docs/auth/sessions.md). The cookie holds a random token; only its digest is
-      # stored. Strict: only the app's own same-origin requests ever need it.
+      # Which login the helpers below serve. Admin::BaseController overrides both, so admin endpoints
+      # read only bussco_admin and admin rows, and member endpoints only bussco_auth and member rows.
+      def auth_cookie = :bussco_auth
+      def admin_session? = false
+
+      # Login (docs/auth/sessions.md). The cookie holds a random token; only its digest is stored.
+      # Strict: only the app's own same-origin requests ever need it.
       def start_session_for(user)
-        terminate_session # this browser's previous login only; other devices keep theirs
+        terminate_session # this browser's previous login of this kind only; other devices keep theirs
         csrf_token = rotate_browser_session
-        cookies[:bussco_auth] = { value: Session.start(user, request), httponly: true, same_site: :strict,
-          secure: Rails.env.production? }
+        cookies[auth_cookie] = { value: Session.start(user, request, admin: admin_session?), httponly: true,
+          same_site: :strict, secure: Rails.env.production? }
         csrf_token
       end
 
       def authenticated_session
         return @authenticated_session if defined?(@authenticated_session)
 
-        token = cookies[:bussco_auth]
-        @authenticated_session = token && Session.resume(token)
-        cookies.delete(:bussco_auth) if token && !@authenticated_session
+        token = cookies[auth_cookie]
+        @authenticated_session = token && Session.resume(token, admin: admin_session?)
+        cookies.delete(auth_cookie) if token && !@authenticated_session
         @authenticated_session
       end
 
@@ -70,8 +75,8 @@ module Api
 
       # Deletes the row, so a copy of the cookie stops working too.
       def terminate_session
-        Session.revoke(cookies[:bussco_auth]) if cookies[:bussco_auth]
-        cookies.delete(:bussco_auth)
+        Session.revoke(cookies[auth_cookie], admin: admin_session?) if cookies[auth_cookie]
+        cookies.delete(auth_cookie)
       end
 
       def user_json(user)

@@ -1,0 +1,29 @@
+module Api
+  module V1
+    module Admin
+      # Base for every admin endpoint (docs/auth/admin-access.md). The inherited session helpers use
+      # the bussco_admin cookie and admin rows here, and every action needs an admin session unless a
+      # subclass skips that check by name.
+      class BaseController < Api::V1::BaseController
+        before_action :require_authentication
+
+        private
+
+        def auth_cookie = :bussco_admin
+        def admin_session? = true
+
+        def current_admin = authenticated_session.user
+
+        # The role comes from the database on every request, never from the client. Signing in
+        # authorizes nothing privileged: privileged actions name the roles they allow.
+        def require_admin_role(*roles)
+          render json: { error: "forbidden" }, status: :forbidden unless current_admin.admin_role.in?(roles.map(&:to_s))
+        end
+
+        def admin_json(user)
+          { id: user.id, full_name: user.full_name, email: user.email, admin_role: user.admin_role }
+        end
+      end
+    end
+  end
+end

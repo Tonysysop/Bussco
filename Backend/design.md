@@ -10,7 +10,7 @@ cooperative formed by BUA staff. This Rails API serves the BUSSCO React app.
 | Scaffold, `GET /up`, `GET /api/v1/health/ready` | Implemented |
 | Browser foundations (auth increment 0): session cookie, CSRF, Origin checks, `GET /api/v1/csrf` | Implemented — request-integrity controls only, not authentication |
 | Registration (auth increment 1): `users` table, `POST /api/v1/auth/registrations` | Implemented — creates an unverified, non-member account; no login |
-| Authentication: email verification, sessions | Implemented; password recovery and admin access planned — see [docs/auth/README.md](docs/auth/README.md) |
+| Authentication: email verification, sessions, password recovery, admin login (A1.1) | Implemented; password change planned — see [docs/auth/README.md](docs/auth/README.md) |
 | Membership application (increment 4): five stages, drafts, passport photo, submission → `awaiting_approval` | Implemented — [docs/membership/application.md](docs/membership/application.md) |
 | Membership review/approval, dashboard, savings, loans | Planned — rules below, no design yet |
 
@@ -57,7 +57,7 @@ One identity store (`users`) for members, applicants and admins. These are
 | Email verification | Owns the email address (not proof of employment) | User, via verification code |
 | Account status | Active / disabled | Admin process |
 | Membership | Applicant → approved member; links unique SAP ID | Authorised membership review |
-| Admin role | Treasurer, President | Controlled provisioning only |
+| Admin role | Super Admin, President, Treasurer (`users.admin_role`, one per user) | Controlled provisioning only ([docs/auth/admin-access.md](docs/auth/admin-access.md)) |
 
 - Public registration: full name, email, password. No role, no SAP ID, no
   membership approval.

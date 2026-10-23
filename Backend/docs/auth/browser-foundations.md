@@ -188,7 +188,7 @@ a revocation guarantee.
 
 ### 6. Revocable database-backed auth sessions (rules; table built in increment 3)
 - `sessions` row: `user_id`, `token_digest`, `created_at`, `last_seen_at`, `ip_address`,
-  `user_agent`. The `admin` flag is added in increment 6.
+  `user_agent`, and the `admin` flag (added in increment 6; admin rows use the `bussco_admin` cookie).
 - Cookie `bussco_auth`: a random opaque token (only its SHA-256 digest is stored),
   `httponly: true`, `same_site: :strict`,
   `secure` in production, host-only (no `domain`), and no `expires`, so it lasts
