@@ -150,10 +150,13 @@ export type MembershipApplication = {
     stages: Record<string, "complete" | "incomplete">
     current_stage: string
     ready_to_submit: boolean
+    missing: Record<string, string[]>
   } | null
   policy: {
     minimum_monthly_contribution_kobo: number
     registration_fee_kobo: number
+    // null when no declaration may be accepted (production without an approved version).
+    declaration: { version: string; text: string; approved: boolean } | null
   }
 }
 
@@ -213,6 +216,17 @@ export const passportPhotoQuery = (user: Applicant, checksum: string) =>
 // The sign-in changed underneath this tab: ask Rails who is signed in now.
 export const revalidateIdentity = (queryClient: QueryClient) =>
   queryClient.invalidateQueries({ queryKey: meQuery.queryKey })
+
+// Asks Rails who is signed in, then for their application; the page follows both answers (a submitted
+// application shows the submitted screen, another account its own application).
+export async function refetchApplicant(queryClient: QueryClient) {
+  const me = await queryClient.fetchQuery(meQuery)
+  if (!me) return
+  return {
+    user: me.user,
+    application: await queryClient.fetchQuery(applicationQuery(me.user)),
+  }
+}
 
 // Signed out without asking /me (an application 401, password reset, later logout): forget the user
 // and every cached application, so none of it outlives the session in memory.
@@ -285,10 +299,12 @@ function useApplicationWrite<Variables>(
   write: (
     variables: Variables,
     headers: Record<string, string>
-  ) => Promise<unknown>
+  ) => Promise<unknown>,
+  mutationKey?: readonly unknown[]
 ) {
   const queryClient = useQueryClient()
   return useMutation({
+    mutationKey,
     mutationFn: (variables: Variables) =>
       writeFor(user, (headers) => write(variables, headers)),
     onSuccess: (data) =>
@@ -328,6 +344,35 @@ export const useSaveStage = (stage: string, user: Applicant) =>
         { lock_version: version, application: fields },
         headers
       )
+  )
+
+// Per applicant, so the page can tell a submission made in this session (in memory only) from a
+// submitted application it merely loaded.
+export const submitKey = (user: Applicant) => [
+  ...MEMBERSHIP_KEY,
+  "submit",
+  user.id,
+]
+
+// Never retried: an unanswered submission may still have succeeded, so the applicant checks first.
+export const useSubmitApplication = (user: Applicant) =>
+  useApplicationWrite(
+    user,
+    (
+      { version, declaration }: { version: number; declaration: string },
+      headers
+    ) =>
+      send(
+        "POST",
+        `${APPLICATION_PATH}/submission`,
+        {
+          lock_version: version,
+          declaration_accepted: true,
+          declaration_version: declaration,
+        },
+        headers
+      ),
+    submitKey(user)
   )
 
 export const useUploadPhoto = (user: Applicant) =>

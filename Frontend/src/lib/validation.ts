@@ -333,6 +333,10 @@ const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 })
 
+// Rails' ISO date as "1 November 2026", the same day in every time zone.
+export const formatIsoDate = (iso: string) =>
+  LONG_DATE.format(new Date(`${iso}T00:00:00Z`))
+
 // Save later checks only a typed amount; Continue also needs both fields and a start that Rails
 // will accept at submission (next month's 1st or later).
 export function savingsErrors(
@@ -361,7 +365,7 @@ export function savingsErrors(
     if (!start)
       errors.contribution_start_date = `${SAVINGS_LABELS.contribution_start_date} can't be blank`
     else if (start < earliest)
-      errors.contribution_start_date = `Contribution start date must be ${LONG_DATE.format(new Date(`${earliest}T00:00:00Z`))} or later`
+      errors.contribution_start_date = `Contribution start date must be ${formatIsoDate(earliest)} or later`
   }
 
   if (Object.keys(errors).length) return { errors }

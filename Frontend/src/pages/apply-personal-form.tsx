@@ -81,7 +81,7 @@ function personalValues(saved: PersonalFields): PersonalValues {
 }
 
 // An in-memory image: the object URL lives only while shown, and is revoked on change or unmount.
-function BlobImage({
+export function BlobImage({
   blob,
   ...props
 }: { blob: Blob } & React.ComponentProps<"img">) {
