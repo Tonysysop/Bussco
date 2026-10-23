@@ -4,6 +4,7 @@ export const APP = "/api/v1/membership/application"
 export const EMPLOYMENT = `${APP}/stages/employment`
 export const PERSONAL = `${APP}/stages/personal`
 export const NEXT_OF_KIN = `${APP}/stages/next_of_kin`
+export const SAVINGS = `${APP}/stages/savings`
 export const PHOTO = `${APP}/passport_photo`
 
 export const USER = {
@@ -14,6 +15,12 @@ export const USER = {
   account_status: "active",
   membership_status: "not_started",
 }
+// Rails' policy block (MembershipApplication constants).
+export const POLICY = {
+  minimum_monthly_contribution_kobo: 3_000_000,
+  registration_fee_kobo: 1_000_000,
+}
+
 export const SIGNED_IN = { status: 200, body: { user: USER } }
 export const SIGNED_OUT = { status: 401, body: { error: "unauthenticated" } }
 export const NOT_STARTED = {
@@ -52,7 +59,7 @@ export function draft(
         ready_to_submit: false,
         missing: {},
       },
-      policy: {},
+      policy: POLICY,
     },
   }
 }
@@ -69,6 +76,6 @@ export const SUBMITTED = {
       membership_status: "awaiting_approval",
     },
     progress: null,
-    policy: {},
+    policy: POLICY,
   },
 }

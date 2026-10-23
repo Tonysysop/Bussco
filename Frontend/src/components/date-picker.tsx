@@ -37,6 +37,7 @@ export function DatePicker({
   min,
   max,
   placeholder = "Select a date",
+  firstOfMonth = false,
   "aria-required": required,
   ...props
 }: {
@@ -46,6 +47,8 @@ export function DatePicker({
   min?: string
   max?: string
   placeholder?: string
+  // Only the 1st of each month can be picked.
+  firstOfMonth?: boolean
   "aria-invalid"?: boolean
   "aria-required"?: boolean
   "aria-describedby"?: string
@@ -54,6 +57,11 @@ export function DatePicker({
   const selected = value ? toDate(value) : undefined
   const first = min ? toDate(min) : undefined
   const last = max ? toDate(max) : undefined
+  // Opens on the chosen day, otherwise on today's month kept within min and max.
+  const today = new Date()
+  const opening =
+    selected ??
+    (first && today < first ? first : last && today > last ? last : today)
 
   return (
     // Non-modal: Escape or a click outside closes and returns focus here; Tab from the days closes
@@ -90,12 +98,13 @@ export function DatePicker({
           autoFocus
           captionLayout="dropdown"
           selected={selected}
-          defaultMonth={selected ?? last}
+          defaultMonth={opening}
           startMonth={first}
           endMonth={last}
           disabled={[
             ...(first ? [{ before: first }] : []),
             ...(last ? [{ after: last }] : []),
+            ...(firstOfMonth ? [(date: Date) => date.getDate() !== 1] : []),
           ]}
           onSelect={(date) => {
             if (!date) return

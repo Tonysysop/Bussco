@@ -38,7 +38,7 @@ nullable, so drafts can be partial. Name and email are not stored here: they are
 | | `next_of_kin_relationship` | string | ≤ 50 | yes |
 | | `next_of_kin_phone` | string | phone format | no |
 | | `next_of_kin_address` | text | ≤ 300; the UI may copy `home_address` (no flag stored) | yes |
-| 4 Savings | `monthly_contribution_kobo` | bigint | integer ≥ 3,000,000 (₦30,000) | yes |
+| 4 Savings | `monthly_contribution_kobo` | bigint | integer ≥ 3,000,000 (₦30,000) and < 2⁶³ (the column's limit, not a policy maximum) | yes |
 | | `contribution_start_date` | date | ISO date, 1st of a month | yes, and at submission it must be next month's 1st or later |
 | 5 Declaration | `declaration_version`, `declaration_accepted_at` | string, datetime | server-set | yes |
 | | `submitted_at` | datetime | server-set | — |

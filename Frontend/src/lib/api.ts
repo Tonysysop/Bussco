@@ -124,11 +124,18 @@ export type NextOfKinFields = {
   next_of_kin_address: string | null
 }
 
+// Money is integer kobo, as Rails stores it.
+export type SavingsFields = {
+  monthly_contribution_kobo: number | null
+  contribution_start_date: string | null
+}
+
 // Only the fields the frontend reads (Backend/docs/membership/application.md).
 export type MembershipApplication = {
   application: EmploymentFields &
     PersonalFields &
-    NextOfKinFields & {
+    NextOfKinFields &
+    SavingsFields & {
       passport_photo: {
         content_type: string
         byte_size: number
@@ -144,6 +151,10 @@ export type MembershipApplication = {
     current_stage: string
     ready_to_submit: boolean
   } | null
+  policy: {
+    minimum_monthly_contribution_kobo: number
+    registration_fee_kobo: number
+  }
 }
 
 type Applicant = Pick<Me["user"], "id" | "email">
