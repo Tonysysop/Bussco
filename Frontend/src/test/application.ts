@@ -5,6 +5,7 @@ export const EMPLOYMENT = `${APP}/stages/employment`
 export const PERSONAL = `${APP}/stages/personal`
 export const NEXT_OF_KIN = `${APP}/stages/next_of_kin`
 export const SAVINGS = `${APP}/stages/savings`
+export const SUBMISSION = `${APP}/submission`
 export const PHOTO = `${APP}/passport_photo`
 
 export const USER = {
@@ -16,9 +17,15 @@ export const USER = {
   membership_status: "not_started",
 }
 // Rails' policy block (MembershipApplication constants).
+export const DECLARATION = {
+  version: "draft-v1",
+  text: "I confirm that the information provided in my membership application is accurate.",
+  approved: false,
+}
 export const POLICY = {
   minimum_monthly_contribution_kobo: 3_000_000,
   registration_fee_kobo: 1_000_000,
+  declaration: DECLARATION as typeof DECLARATION | null,
 }
 
 export const SIGNED_IN = { status: 200, body: { user: USER } }

@@ -1,5 +1,10 @@
-import { useEffect } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import {
   ArrowRight,
   BadgeCheck,
@@ -9,7 +14,7 @@ import {
   LoaderCircle,
   LockKeyhole,
 } from "lucide-react"
-import { Link, Navigate, useNavigate, useParams } from "react-router"
+import { Navigate, useNavigate, useParams } from "react-router"
 
 import logo from "@/assets/bussco.png"
 import {
@@ -20,13 +25,15 @@ import {
 } from "@/components/application-layout"
 import { SessionStatus } from "@/components/auth-layout"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import {
   apiErrorMessage,
   applicationQuery,
   forgetSession,
   IdentityMismatch,
   meQuery,
+  refetchApplicant,
+  submitKey,
   revalidateIdentity,
   startApplication,
   type Me,
@@ -36,6 +43,7 @@ import { cn } from "@/lib/utils"
 import { EmploymentForm } from "@/pages/apply-employment-form"
 import { NextOfKinForm } from "@/pages/apply-next-of-kin-form"
 import { PersonalForm } from "@/pages/apply-personal-form"
+import { ReviewScreen } from "@/pages/apply-review"
 import { SavingsForm } from "@/pages/apply-savings-form"
 import { Actions, unauthenticated } from "@/pages/apply-stage-form"
 
@@ -60,6 +68,16 @@ export function ApplyPage() {
   const me = useQuery(meQuery)
   // The user comes only from Rails' /me answer, never from the URL or router state.
   const user = me.data?.user ?? SIGNED_OUT
+  // Celebrate only a submission this page made: not a reload, a status check or a later visit.
+  const [mountedAt] = useState(Date.now)
+  const justSubmitted =
+    useMutationState({
+      filters: {
+        mutationKey: submitKey(user),
+        predicate: ({ state }) =>
+          state.status !== "error" && state.submittedAt >= mountedAt,
+      },
+    }).length > 0
   const application = useQuery({
     ...applicationQuery(user),
     enabled: !!me.data,
@@ -108,7 +126,7 @@ export function ApplyPage() {
     application.data?.applicant.membership_status === "awaiting_approval" ||
     application.data?.application.submitted_at
   )
-    return <Submitted data={application.data} />
+    return <Submitted data={application.data} celebrate={justSubmitted} />
 
   const stage = STAGES.find((candidate) => candidate.key === slug)
 
@@ -156,7 +174,6 @@ export function ApplyPage() {
       />
     )
 
-  const next = STAGES[STAGES.indexOf(stage) + 1]
   return (
     <StageScreen
       stage={stage}
@@ -190,32 +207,13 @@ export function ApplyPage() {
           user={me.data.user}
         />
       ) : (
-        <>
-          {/* Review and submit arrives in F2.6. */}
-          <p className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-600">
-            The {stage.label.toLowerCase()} section will be available here soon.
-          </p>
-          <StageLinks stage={stage} next={next} />
-        </>
+        <ReviewScreen
+          key={me.data.user.id}
+          application={application.data}
+          user={me.data.user}
+        />
       )}
     </StageScreen>
-  )
-}
-
-// Plain navigation for stages whose form isn't built yet.
-function StageLinks({ stage, next }: { stage: Stage; next?: Stage }) {
-  return (
-    <Actions stage={stage}>
-      {next && (
-        <Link
-          to={`/apply/${next.key}`}
-          className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
-        >
-          {next.key === "review" ? "Continue to review" : "Continue"}
-          <ArrowRight aria-hidden className="size-[18px]" />
-        </Link>
-      )}
-    </Actions>
   )
 }
 
@@ -280,28 +278,39 @@ function StageScreen({
 
 // Final-stage.png, aligned with Rails: no reference number (the API has none), no email promises
 // (none are sent), and the account is already active, only member features wait for approval.
-function Submitted({ data }: { data: MembershipApplication }) {
+function Submitted({
+  data,
+  celebrate,
+}: {
+  data: MembershipApplication
+  celebrate: boolean
+}) {
   const queryClient = useQueryClient()
   // Both must answer before saying nothing changed; a failure keeps the last known details. The
   // application is cached under whoever /me says is signed in now, which another tab may have changed.
   const check = useMutation({
-    mutationFn: async () => {
-      const me = await queryClient.fetchQuery(meQuery)
-      if (me) await queryClient.fetchQuery(applicationQuery(me.user))
-    },
+    mutationFn: () => refetchApplicant(queryClient),
   })
   const submittedAt = data.application.submitted_at
 
   return (
     <ApplicationLayout narrow>
-      <div className="mb-6 flex justify-center border-b border-gray-100 pb-6">
+      <div className="mb-5 flex justify-center border-b border-gray-100 pb-5 sm:mb-6 sm:pb-6">
         <img src={logo} alt={LOGO_ALT} className="h-12 w-auto object-contain" />
       </div>
       <div className="text-center">
-        <span className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-green-50">
+        {/* A one-time entrance after a submission made here; static for reduced motion and every revisit. */}
+        <span
+          className={cn(
+            "mx-auto mb-3 flex size-16 items-center justify-center rounded-2xl bg-green-50 sm:mb-4",
+            celebrate &&
+              "animate-in duration-300 zoom-in-90 fade-in motion-reduce:animate-none"
+          )}
+        >
           <CircleCheck aria-hidden className="size-9 text-green-700" />
         </span>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+        {/* break-words: at very large text a word wider than the screen splits rather than scrolling. */}
+        <h1 className="font-heading text-2xl font-bold tracking-tight break-words text-gray-900 sm:text-3xl">
           Application submitted
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-gray-600 sm:text-base">
@@ -310,31 +319,33 @@ function Submitted({ data }: { data: MembershipApplication }) {
         </p>
       </div>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-muted px-5 text-sm">
+      {/* px-[20px] = px-5 at normal size, but fixed so that enlarged text keeps the room. */}
+      <div className="mt-6 rounded-lg border border-gray-200 bg-muted px-[20px] text-sm">
         <dl>
           {submittedAt && (
-            <div className="flex flex-col gap-1 border-b border-gray-200 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="font-heading text-xs font-semibold tracking-wide text-gray-600 uppercase">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-gray-200 py-4">
+              <dt className="min-w-0 font-heading text-xs font-semibold tracking-wide break-words text-gray-600 uppercase">
                 Date submitted
               </dt>
-              <dd className="font-semibold text-gray-900">
+              <dd className="min-w-0 font-semibold break-words text-gray-900">
                 <time dateTime={submittedAt}>
                   {SUBMITTED_DATE.format(new Date(submittedAt))}
                 </time>
               </dd>
             </div>
           )}
-          <div className="flex flex-col gap-1 border-b border-gray-200 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <dt className="font-heading text-xs font-semibold tracking-wide text-gray-600 uppercase">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-gray-200 py-4">
+            <dt className="min-w-0 font-heading text-xs font-semibold tracking-wide break-words text-gray-600 uppercase">
               Current status
             </dt>
-            <dd>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+            {/* min-w-0 and max-w-full let the badge fit the row at very large text instead of overflowing. */}
+            <dd className="min-w-0">
+              <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
                 <span
                   aria-hidden
-                  className="size-2 rounded-full bg-amber-500"
+                  className="size-2 shrink-0 rounded-full bg-amber-500"
                 />
-                Awaiting review
+                <span className="min-w-0 break-words">Awaiting review</span>
               </span>
             </dd>
           </div>
@@ -345,12 +356,13 @@ function Submitted({ data }: { data: MembershipApplication }) {
         </p>
       </div>
 
-      <div className="mt-4 flex gap-3 rounded-lg border border-gray-200 p-4 text-sm">
+      {/* gap/padding in px (same as gap-3 p-4) so enlarged text keeps the room, as in the panel above. */}
+      <div className="mt-4 flex gap-[12px] rounded-lg border border-gray-200 p-[16px] text-sm">
         <LockKeyhole
           aria-hidden
           className="mt-0.5 size-5 shrink-0 text-primary"
         />
-        <div>
+        <div className="min-w-0 break-words">
           <p className="font-semibold text-gray-900">
             Member features pending approval
           </p>
@@ -365,7 +377,8 @@ function Submitted({ data }: { data: MembershipApplication }) {
         onClick={() => check.mutate()}
         disabled={check.isPending}
         size="lg"
-        className="mt-6 w-full"
+        // The label may wrap at large text; the button grows and never drops below 48px.
+        className="mt-6 h-auto min-h-12 w-full py-3 whitespace-normal"
       >
         {check.isPending ? (
           <>

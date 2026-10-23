@@ -79,13 +79,23 @@ export function StageProgress({
   const position = STAGES.indexOf(current) + 1
   return (
     <div className="rounded-lg bg-muted p-4 sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-3 text-xs">
-        <p className="font-heading font-bold tracking-wide text-primary uppercase">
-          Step {position} of {STAGES.length}
-          <span className="sm:hidden"> — {current.label}</span>
+      {/* Below sm the stage name joins the step on one line where it fits. Narrower screens or larger
+          text move the status to its own line, then break the label at the dash (each part is an
+          inline-block); a word splits only if it alone is wider than the box, rather than clipping. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+        <p className="min-w-0 font-heading font-bold tracking-wide break-words text-primary uppercase">
+          <span className="inline-block max-w-full">
+            Step {position} of {STAGES.length}
+          </span>{" "}
+          <span className="inline-block max-w-full sm:hidden">
+            — {current.label}
+          </span>
         </p>
-        <p className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-gray-600">
-          <span aria-hidden className="size-2 rounded-full bg-brand-yellow" />
+        <p className="flex min-w-0 items-center gap-1.5 text-gray-600">
+          <span
+            aria-hidden
+            className="size-2 shrink-0 rounded-full bg-brand-yellow"
+          />
           Application draft
         </p>
       </div>

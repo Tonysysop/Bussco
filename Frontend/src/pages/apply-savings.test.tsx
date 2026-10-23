@@ -56,6 +56,7 @@ describe("Contributions: loading and layout", () => {
     const reply = loaded()
     // Not Rails' current figures, so a hardcoded ₦30,000 or ₦10,000 would fail.
     reply.body.policy = {
+      ...reply.body.policy,
       minimum_monthly_contribution_kobo: 4_000_000,
       registration_fee_kobo: 1_250_000,
     }

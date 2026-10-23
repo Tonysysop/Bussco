@@ -255,15 +255,18 @@ describe("ApplyPage: resume and navigation", () => {
     expect(screen.getByText(/Step 5 of 5/)).toBeInTheDocument()
   })
 
-  it("shows Review, which has no form yet, with Back only, saving nothing", async () => {
+  it("shows Review with Back and a Submit that waits for the declaration, saving nothing", async () => {
     const fetchMock = stubFetch(SIGNED_IN, draft({}, "review"))
     const router = await renderRoute("/apply/review")
     const user = userEvent.setup()
     await screen.findByRole("heading", { name: "Review your application" })
     expect(screen.queryByRole("link", { name: /Continue/ })).toBeNull()
     expect(
-      screen.queryByRole("button", { name: /Save and continue later|Submit/ })
+      screen.queryByRole("button", { name: /Save and continue later/ })
     ).toBeNull()
+    expect(
+      screen.getByRole("button", { name: /Submit application/ })
+    ).toBeDisabled()
 
     await user.click(screen.getByRole("link", { name: /Back/ }))
     expect(router.state.location.pathname).toBe("/apply/savings")
@@ -301,6 +304,12 @@ describe("ApplyPage: resume and navigation", () => {
 
     // Below sm: stage name beside "Step n of 5", labels visually hidden, actions stacked.
     expect(screen.getByText(/— Personal/)).toHaveClass("sm:hidden")
+    // The header wraps as a whole (status below, then a break at the dash), never mid-phrase.
+    expect(screen.getByText(/Step 2 of 5/)).toHaveClass("inline-block")
+    expect(screen.getByText(/— Personal/)).toHaveClass("inline-block")
+    expect(screen.getByText("Application draft").parentElement).toHaveClass(
+      "flex-wrap"
+    )
     expect(within(progressItems()[0]).getByText(/Employment/)).toHaveClass(
       "sr-only",
       "sm:not-sr-only"
@@ -319,6 +328,11 @@ describe("ApplyPage: submitted", () => {
     expect(
       await screen.findByRole("heading", { name: "Application submitted" })
     ).toBeInTheDocument()
+    // Loaded, not just submitted here (a refresh or later visit): the success icon stays static.
+    expect(
+      screen.getByRole("heading", { name: "Application submitted" })
+        .previousElementSibling
+    ).not.toHaveClass("animate-in")
     expect(screen.getByText("22/10/2026")).toHaveAttribute(
       "datetime",
       "2026-10-21T23:30:00Z"
