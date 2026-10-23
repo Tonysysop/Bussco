@@ -289,6 +289,145 @@ export const nextOfKinErrors = (
     requireAll
   )
 
+// Savings stage. Rails stores whole kobo; the form takes whole naira, so kobo is the naira digits
+// plus "00". Money stays in strings and BigInt, never floating point.
+export const SAVINGS_LABELS = {
+  monthly_contribution_kobo: "Monthly contribution",
+  contribution_start_date: "Contribution start date",
+} as const
+
+type SavingsField = keyof typeof SAVINGS_LABELS
+
+// An input limit, not cooperative policy (Rails' own bound is its bigint column).
+export const MAX_CONTRIBUTION_NAIRA = 9_999_999_999n
+
+// "50,000" or "50 000" → 50000n; undefined unless it is a whole number of naira.
+export function toNaira(typed: string) {
+  const digits = typed.replace(/[\s,]/g, "")
+  return /^\d+$/.test(digits) ? BigInt(digits) : undefined
+}
+
+const NAIRA = new Intl.NumberFormat("en-NG")
+
+// Kobo as naira digits: "30,000", or "30,000.50" for a saved value with kobo.
+export function formatKobo(kobo: number | bigint) {
+  const value = BigInt(kobo)
+  const rest = value % 100n
+  return (
+    NAIRA.format(value / 100n) +
+    (rest ? `.${String(rest).padStart(2, "0")}` : "")
+  )
+}
+
+// The 1st of the month `months` after the current Lagos month, as an ISO date.
+export function firstOfMonthInLagos(months: number, now = new Date()) {
+  const [year, month] = todayInLagos(now).split("-").map(Number)
+  const index = year * 12 + month - 1 + months
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}-01`
+}
+
+const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+})
+
+// Save later checks only a typed amount; Continue also needs both fields and a start that Rails
+// will accept at submission (next month's 1st or later).
+export function savingsErrors(
+  input: { monthly_contribution: string; contribution_start_date: string },
+  requireAll: boolean,
+  minimumKobo: number,
+  now = new Date()
+) {
+  const errors: Partial<Record<SavingsField, string>> = {}
+  const typed = input.monthly_contribution.trim()
+  const start = input.contribution_start_date
+  const naira = toNaira(typed)
+  const earliest = firstOfMonthInLagos(1, now)
+
+  if (typed && naira === undefined)
+    errors.monthly_contribution_kobo =
+      "Enter the amount in whole naira, e.g. 50,000"
+  else if (naira !== undefined && naira * 100n < BigInt(minimumKobo))
+    errors.monthly_contribution_kobo = `Monthly contribution must be at least ₦${formatKobo(minimumKobo)}`
+  else if (naira !== undefined && naira > MAX_CONTRIBUTION_NAIRA)
+    errors.monthly_contribution_kobo = `Monthly contribution can't be more than ₦${formatKobo(MAX_CONTRIBUTION_NAIRA * 100n)}`
+
+  if (requireAll) {
+    if (!typed)
+      errors.monthly_contribution_kobo = `${SAVINGS_LABELS.monthly_contribution_kobo} can't be blank`
+    if (!start)
+      errors.contribution_start_date = `${SAVINGS_LABELS.contribution_start_date} can't be blank`
+    else if (start < earliest)
+      errors.contribution_start_date = `Contribution start date must be ${LONG_DATE.format(new Date(`${earliest}T00:00:00Z`))} or later`
+  }
+
+  if (Object.keys(errors).length) return { errors }
+  return {
+    errors,
+    data: {
+      monthly_contribution_kobo: naira === undefined ? "" : `${naira}00`,
+      contribution_start_date: start,
+    },
+  }
+}
+
+const ONES = [
+  "",
+  "One",
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Eleven",
+  "Twelve",
+  "Thirteen",
+  "Fourteen",
+  "Fifteen",
+  "Sixteen",
+  "Seventeen",
+  "Eighteen",
+  "Nineteen",
+]
+const TENS = [
+  "",
+  "",
+  "Twenty",
+  "Thirty",
+  "Forty",
+  "Fifty",
+  "Sixty",
+  "Seventy",
+  "Eighty",
+  "Ninety",
+]
+const SCALES = ["", " Thousand", " Million", " Billion"]
+
+// 50000n → "Fifty Thousand Naira Only", as Stage4.png writes it; up to MAX_CONTRIBUTION_NAIRA.
+export function amountInWords(naira: bigint) {
+  const groups: string[] = []
+  for (let scale = 0; naira > 0n; scale++, naira /= 1000n) {
+    const group = Number(naira % 1000n)
+    if (!group) continue
+    const rest = group % 100
+    const words = [
+      group >= 100 && `${ONES[Math.floor(group / 100)]} Hundred`,
+      rest < 20
+        ? ONES[rest]
+        : `${TENS[Math.floor(rest / 10)]} ${ONES[rest % 10]}`.trim(),
+    ]
+    groups.unshift(words.filter(Boolean).join(" ") + SCALES[scale])
+  }
+  return `${groups.join(" ") || "Zero"} Naira Only`
+}
+
 // Quick feedback before uploading; Rails checks the file's real type from its first bytes.
 export const PHOTO_MAX_BYTES = 2 * 1024 * 1024
 

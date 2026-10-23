@@ -49,8 +49,9 @@ class MembershipApplication < ApplicationRecord
   TEXT_LIMITS.each { |field, limit| validates field, length: { maximum: limit }, allow_nil: true }
   validates :sap_staff_id, format: { with: %r{\A[A-Za-z0-9/-]{1,30}\z} }, allow_nil: true
   validates(*PHONES, format: { with: /\A\+?[0-9]{7,15}\z/ }, allow_nil: true)
-  validates :monthly_contribution_kobo, numericality: { only_integer: true, greater_than_or_equal_to: MINIMUM_MONTHLY_CONTRIBUTION_KOBO },
-    allow_nil: true
+  # The upper bound is the bigint column's, not a policy maximum: larger values would raise (500) on save.
+  validates :monthly_contribution_kobo, numericality: { only_integer: true, greater_than_or_equal_to: MINIMUM_MONTHLY_CONTRIBUTION_KOBO,
+    less_than: 2**63 }, allow_nil: true
   validate :no_control_characters, :dates_well_formed, :passport_photo_acceptable
 
   validates(*(STAGES.values.flatten - OPTIONAL), presence: true, on: :submit)

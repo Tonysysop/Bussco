@@ -64,10 +64,11 @@ class MembershipApplicationTest < ActiveSupport::TestCase
   end
 
   test "money must be a whole number of kobo, at least the minimum" do
-    [ "abc", "3000000.5", 3_000_000.5, "12abc", -1 ].each do |value|
+    [ "abc", "3000000.5", 3_000_000.5, "12abc", -1, 2**63, "9" * 25 ].each do |value|
       assert_not MembershipApplication.new(user: @user, monthly_contribution_kobo: value).valid?, value.inspect
     end
     assert MembershipApplication.new(user: @user, monthly_contribution_kobo: "3000000").valid?
+    assert MembershipApplication.new(user: @user, monthly_contribution_kobo: 2**63 - 1).valid?
   end
 
   test "dates: birth in the past; contributions start on the 1st, next month or later at submission" do

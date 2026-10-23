@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import {
+  amountInWords,
+  firstOfMonthInLagos,
+  formatKobo,
   fromRailsPhone,
   nextOfKinErrors,
   personalErrors,
   photoProblem,
+  savingsErrors,
   signupSchema,
   todayInLagos,
+  toNaira,
   toRailsPhone,
 } from "@/lib/validation"
 
@@ -295,5 +300,108 @@ describe("nextOfKinErrors", () => {
     expect(errors({ next_of_kin_phone: "+12" })).toHaveProperty(
       "next_of_kin_phone"
     )
+  })
+})
+
+describe("savings money", () => {
+  it("reads whole naira with commas or spaces, and nothing else", () => {
+    expect(toNaira("50,000")).toBe(50000n)
+    expect(toNaira(" 50 000 ")).toBe(50000n)
+    expect(toNaira("030000")).toBe(30000n)
+    for (const typed of [
+      "",
+      "30000.50",
+      "30,000.5",
+      "-30000",
+      "30k",
+      "1e5",
+      "₦30000",
+    ])
+      expect(toNaira(typed), typed).toBeUndefined()
+  })
+
+  it("formats kobo as naira without floating point", () => {
+    expect(formatKobo(3_000_000)).toBe("30,000")
+    expect(formatKobo(3_000_050)).toBe("30,000.50")
+    expect(formatKobo(999_999_999_900n)).toBe("9,999,999,999")
+  })
+
+  it("writes the amount in words", () => {
+    expect(amountInWords(50000n)).toBe("Fifty Thousand Naira Only")
+    expect(amountInWords(30000n)).toBe("Thirty Thousand Naira Only")
+    expect(amountInWords(1_250_019n)).toBe(
+      "One Million Two Hundred Fifty Thousand Nineteen Naira Only"
+    )
+    expect(amountInWords(9_999_999_999n)).toBe(
+      "Nine Billion Nine Hundred Ninety Nine Million Nine Hundred Ninety Nine Thousand Nine Hundred Ninety Nine Naira Only"
+    )
+  })
+
+  it("finds month starts in Lagos across month and year ends", () => {
+    // 23:30 UTC on 31 Dec is already 1 Jan in Lagos.
+    const newYear = new Date("2026-12-31T23:30:00Z")
+    expect(firstOfMonthInLagos(1, newYear)).toBe("2027-02-01")
+    expect(firstOfMonthInLagos(12, new Date("2026-10-23T12:00:00Z"))).toBe(
+      "2027-10-01"
+    )
+  })
+})
+
+describe("savingsErrors", () => {
+  const now = new Date("2026-10-23T12:00:00Z")
+  const MIN = 3_000_000
+  const check = (
+    monthly_contribution: string,
+    contribution_start_date: string,
+    requireAll: boolean
+  ) =>
+    savingsErrors(
+      { monthly_contribution, contribution_start_date },
+      requireAll,
+      MIN,
+      now
+    )
+
+  it("sends integer kobo as a string", () => {
+    expect(check("35,000", "2026-11-01", true)).toEqual({
+      errors: {},
+      data: {
+        monthly_contribution_kobo: "3500000",
+        contribution_start_date: "2026-11-01",
+      },
+    })
+  })
+
+  it("holds the minimum from policy and the input limit", () => {
+    expect(check("29,999", "", false).errors.monthly_contribution_kobo).toBe(
+      "Monthly contribution must be at least ₦30,000"
+    )
+    expect(check("30,000", "", false).errors).toEqual({})
+    expect(check("9,999,999,999", "", false).errors).toEqual({})
+    expect(
+      check("10,000,000,000", "", false).errors.monthly_contribution_kobo
+    ).toBe("Monthly contribution can't be more than ₦9,999,999,999")
+    expect(check("30000.50", "", false).errors.monthly_contribution_kobo).toBe(
+      "Enter the amount in whole naira, e.g. 50,000"
+    )
+  })
+
+  it("lets Save later keep a partial draft, Continue needs everything", () => {
+    expect(check("", "", false)).toEqual({
+      errors: {},
+      data: { monthly_contribution_kobo: "", contribution_start_date: "" },
+    })
+    expect(check("", "", true).errors).toEqual({
+      monthly_contribution_kobo: "Monthly contribution can't be blank",
+      contribution_start_date: "Contribution start date can't be blank",
+    })
+  })
+
+  it("needs next month's 1st or later only to continue", () => {
+    expect(check("30,000", "2026-10-01", false).errors).toEqual({})
+    expect(check("30,000", "2026-10-01", true).errors).toEqual({
+      contribution_start_date:
+        "Contribution start date must be 1 November 2026 or later",
+    })
   })
 })

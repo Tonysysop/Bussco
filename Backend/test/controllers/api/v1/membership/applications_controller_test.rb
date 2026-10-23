@@ -134,7 +134,8 @@ class Api::V1::Membership::ApplicationsControllerTest < ActionDispatch::Integrat
       "personal" => [ { primary_phone: "12345" }, { date_of_birth: "12/04/1988" }, { date_of_birth: "2999-01-01" },
                       { sex: "x" * 31 }, { marital_status: "x" * 31 }, { nationality: "x" * 61 } ],
       "savings" => [ { monthly_contribution_kobo: 2_999_999 }, { monthly_contribution_kobo: 3_000_000.5 },
-                     { monthly_contribution_kobo: "lots" }, { contribution_start_date: "2027-01-02" } ]
+                     { monthly_contribution_kobo: "lots" }, { monthly_contribution_kobo: 2**63 },
+                     { monthly_contribution_kobo: "9" * 25 }, { contribution_start_date: "2027-01-02" } ]
     }.each do |stage, attempts|
       attempts.each do |attributes|
         assert_no_changes -> { saved.attributes } do

@@ -255,23 +255,19 @@ describe("ApplyPage: resume and navigation", () => {
     expect(screen.getByText(/Step 5 of 5/)).toBeInTheDocument()
   })
 
-  it("moves through stages without forms yet with Back and Continue only, saving nothing", async () => {
-    const fetchMock = stubFetch(SIGNED_IN, draft({}, "savings"))
-    const router = await renderRoute("/apply/savings")
+  it("shows Review, which has no form yet, with Back only, saving nothing", async () => {
+    const fetchMock = stubFetch(SIGNED_IN, draft({}, "review"))
+    const router = await renderRoute("/apply/review")
     const user = userEvent.setup()
-    await screen.findByRole("heading", { name: "Monthly contribution" })
-    expect(
-      screen.getByRole("link", { name: /Continue to review/ })
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole("link", { name: /Continue to review/ }))
     await screen.findByRole("heading", { name: "Review your application" })
     expect(screen.queryByRole("link", { name: /Continue/ })).toBeNull()
-
-    await user.click(screen.getByRole("link", { name: /Back/ }))
-    expect(router.state.location.pathname).toBe("/apply/savings")
     expect(
       screen.queryByRole("button", { name: /Save and continue later|Submit/ })
     ).toBeNull()
+
+    await user.click(screen.getByRole("link", { name: /Back/ }))
+    expect(router.state.location.pathname).toBe("/apply/savings")
+    await screen.findByRole("heading", { name: "Monthly contribution" })
     expect(
       fetchMock.mock.calls.filter(
         ([, init]) => init?.method && init.method !== "GET"
@@ -279,7 +275,7 @@ describe("ApplyPage: resume and navigation", () => {
     ).toEqual([])
   })
 
-  it("has one heading, an ordered step list and keyboard order Back then Continue", async () => {
+  it("has one heading, an ordered step list and keyboard order Back, Save later, Continue", async () => {
     stubFetch(SIGNED_IN, draft({}, "savings"))
     await renderRoute("/apply/savings")
     await screen.findByRole("heading", { name: "Monthly contribution" })
@@ -287,10 +283,15 @@ describe("ApplyPage: resume and navigation", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1)
     expect(screen.getByRole("list").tagName).toBe("OL")
     const user = userEvent.setup()
+    act(() => screen.getByRole("link", { name: /Back/ }).focus())
     await user.tab()
-    expect(screen.getByRole("link", { name: /Back/ })).toHaveFocus()
+    expect(
+      screen.getByRole("button", { name: "Save and continue later" })
+    ).toHaveFocus()
     await user.tab()
-    expect(screen.getByRole("link", { name: /Continue/ })).toHaveFocus()
+    expect(
+      screen.getByRole("button", { name: /Continue to review/ })
+    ).toHaveFocus()
   })
 
   it("follows the designs' mobile rules", async () => {
