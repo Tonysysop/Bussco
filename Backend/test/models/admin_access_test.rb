@@ -125,6 +125,52 @@ class AdminAccessTest < ActiveSupport::TestCase
     assert_equal [ kept.id ], target.sessions.pluck(:id)
   end
 
+  test "each office has one holder, in the model and the database" do
+    user("p@example.com", admin_role: "president")
+    second = user("q@example.com")
+    error = assert_raises(ActiveRecord::RecordInvalid) { second.change_admin_role!(:president, by: "Ops", action: :grant) }
+    assert_match(/has already been taken/, error.message)
+    assert_db_rejects(ActiveRecord::RecordNotUnique) { raw_user("r@example.com", admin_role: "president") }
+    assert_equal 0, AdminRoleChange.count
+  end
+
+  test "assign_admin_office! demotes the holder and grants the office in one transaction, recording the actor" do
+    root, = provision
+    holder = user("p@example.com", admin_role: "president")
+    target = user("t@example.com", admin_role: "treasurer")
+    sessions = [ admin_session(holder), admin_session(target) ]
+    kept = member_session(holder)
+
+    assert target.assign_admin_office!(:president, by: root)
+    assert_equal [ nil, "president" ], [ holder.reload.admin_role, target.reload.admin_role ]
+    assert_equal [ [ holder.id, "president", nil, "revoke" ], [ target.id, "treasurer", "president", "grant" ] ],
+      AdminRoleChange.where(changed_by_user: root).order(:id).pluck(:user_id, :previous_role, :new_role, :action)
+    assert_equal [ root.email ], AdminRoleChange.where(changed_by_user: root).distinct.pluck(:changed_by)
+    assert_not Session.exists?(id: sessions.map(&:id))
+    assert Session.exists?(kept.id)
+  end
+
+  test "a rejected assignment leaves the holder, the audit and the holder's sessions as they were" do
+    root, = provision
+    holder = user("p@example.com", admin_role: "president")
+    session = admin_session(holder)
+    target = user("t@example.com")
+    target.update_columns(account_status: "disabled") # turned ineligible after any controller check
+
+    assert_raises(ActiveRecord::RecordInvalid) { target.assign_admin_office!(:president, by: root) }
+    assert_equal "president", holder.reload.admin_role
+    assert_nil target.reload.admin_role
+    assert Session.exists?(session.id)
+    assert_equal 1, AdminRoleChange.count # provisioning only
+  end
+
+  test "assign_admin_office! never touches super_admin" do
+    root, = provision
+    assert_raises(User::ProvisioningError) { user("t@example.com").assign_admin_office!(:super_admin, by: root) }
+    assert_raises(User::ProvisioningError) { root.assign_admin_office!(:president, by: root) }
+    assert_equal "super_admin", root.reload.admin_role
+  end
+
   test "role changes outside change_admin_role! are rejected, so none skips the audit" do
     target = user("t@example.com", admin_role: "treasurer")
     session = admin_session(target)

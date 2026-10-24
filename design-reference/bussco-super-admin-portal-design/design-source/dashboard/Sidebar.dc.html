@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BUSSCO Super Admin — Sidebar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+.sb-nav{height:100vh}
+@media (max-width: 860px){.sb-nav{height:auto !important}}
+.sb-link{color:#374151;background:transparent}
+.sb-link:hover{background:#F3F4F6;color:#1F2937}
+.sb-link.is-active{background:#F7ECEC;color:#75141A}
+.sb-link:focus-visible,.sb-icon:focus-visible,.sb-user:focus-visible,.sb-mi:focus-visible,.sb-btn:focus-visible{outline:2px solid #9E1B22;outline-offset:2px}
+.sb-icon{color:#5B6472;background:transparent}
+.sb-icon:hover{background:#EEF0F3;color:#1F2937}
+.sb-user{background:#F8F9FB;border:1px solid #EEF0F3;color:inherit}
+.sb-user:hover{background:#F3F4F6;border-color:#E2E4E9}
+.sb-user.is-open{background:#FFFFFF;border-color:#D9A3A6;box-shadow:0 0 0 3px rgba(158,27,34,.10)}
+.sb-av{background:transparent;border:0}
+.sb-av:hover .sb-avc{box-shadow:0 0 0 3px #EEF0F3}
+.sb-mi{background:transparent;color:#1F2937;text-decoration:none;border:0}
+.sb-mi:hover{background:#F3F4F6}
+.sb-mi.is-danger{color:#B42318}
+.sb-mi.is-danger:hover{background:#FEF3F2}
+.sb-chev{transition:transform .15s ease}
+.sb-user.is-open .sb-chev{transform:rotate(180deg)}
+.sb-field{border:1px solid #D1D5DB;background:#FFFFFF}
+.sb-field:hover{border-color:#9CA3AF}
+.sb-field:focus{outline:none;border-color:#9E1B22;box-shadow:0 0 0 3px rgba(158,27,34,.16)}
+.sb-field.is-error{border-color:#B42318;background:#FFFBFA}
+.sb-btn{background:#FFFFFF;color:#1F2937;border:1px solid #D1D5DB}
+.sb-btn:hover{background:#F9FAFB;border-color:#9CA3AF}
+.sb-primary{background:#9E1B22;color:#FFFFFF;border:1px solid #9E1B22}
+.sb-primary:hover{background:#75141A;border-color:#75141A}
+@media (prefers-reduced-motion: reduce){.sb-chev{transition:none}}
+</style>
+</helmet>
+<nav class="sb-nav" aria-label="Super admin" style="box-sizing: border-box; width: 100%; min-height: 560px; display: flex; flex-direction: column; gap: 24px; padding: {{pad}}; background: #FFFFFF; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2937">
+
+<sc-if value="{{expanded}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 0 0 8px">
+<img src="../../assets/bussco-emblem.png" alt="" style="display: block; width: 30px; height: 33px; object-fit: contain">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-size: 21px; font-weight: 500; letter-spacing: 0.06em; color: #75141A; line-height: 1">BUSSCO</span>
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 0.14em; color: #5B6472">SUPER ADMIN</span>
+</div>
+<button type="button" class="sb-icon" onClick="{{toggle}}" aria-label="Collapse sidebar" aria-expanded="true" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 10px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path><path d="M16 10l-2 2 2 2"></path></svg>
+</button>
+</div>
+</sc-if>
+<sc-if value="{{collapsed}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; flex-direction: column; align-items: center; gap: 12px">
+<img src="../../assets/bussco-emblem.png" alt="BUSSCO" style="display: block; width: 30px; height: 33px; object-fit: contain">
+<button type="button" class="sb-icon" onClick="{{toggle}}" aria-label="Expand sidebar" aria-expanded="false" title="Expand sidebar" style="width: 44px; height: 44px; border: 0; border-radius: 10px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"></rect><path d="M9.5 4.5v15"></path><path d="M14 10l2 2-2 2"></path></svg>
+</button>
+</div>
+</sc-if>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<sc-if value="{{expanded}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; color: #5B6472">WORKSPACE</p>
+</sc-if>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: {{listJustify}}; gap: 2px">
+<sc-for list="{{items}}" as="item" hint-placeholder-count="5">
+<li style="flex: {{liFlex}}; min-width: 0">
+<sc-if value="{{expanded}}" hint-placeholder-val="{{ true }}">
+<a href="{{item.href}}" class="{{item.cls}}" aria-current="{{item.current}}" style="display: flex; align-items: center; gap: 12px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{item.d1}}"></path><path d="{{item.d2}}"></path></svg>
+<span style="flex-grow: 1">{{item.label}}</span>
+</a>
+</sc-if>
+<sc-if value="{{collapsed}}" hint-placeholder-val="{{ false }}">
+<a href="{{item.href}}" class="{{item.cls}}" aria-current="{{item.current}}" aria-label="{{item.label}}" title="{{item.label}}" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; text-decoration: none">
+<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{item.d1}}"></path><path d="{{item.d2}}"></path></svg>
+</a>
+</sc-if>
+</li>
+</sc-for>
+</ul>
+</div>
+
+<div onKeyDown="{{onKey}}" style="position: relative; margin-top: auto; display: flex; flex-direction: column; align-items: {{userAlign}}">
+
+<sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+<button type="button" tabindex="-1" aria-hidden="true" onClick="{{closeMenu}}" style="position: fixed; inset: 0; z-index: 30; border: 0; padding: 0; background: transparent; cursor: default"></button>
+<div role="menu" aria-label="Account" style="position: absolute; z-index: 31; left: {{pop.left}}; right: {{pop.right}}; bottom: {{pop.bottom}}; width: {{pop.width}}; box-sizing: border-box; padding: 6px; border-radius: 14px; background: #FFFFFF; border: 1px solid #E5E7EB; box-shadow: 0 1px 2px rgba(31,41,55,0.06), 0 20px 40px -12px rgba(31,41,55,0.28)">
+<div style="padding: 10px 12px 10px; margin-bottom: 4px; border-bottom: 1px solid #F1F2F5; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13.5px; font-weight: 600">Adaeze Okafor</span>
+<span style="font-size: 12px; color: #5B6472; overflow-wrap: anywhere">a.okafor@company.com</span>
+</div>
+<button type="button" role="menuitem" class="sb-mi" onClick="{{openPw}}" style="width: 100%; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 9px; display: flex; align-items: center; gap: 12px; font-family: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer">
+<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="3.5"></circle><path d="M10.5 12.5L20 3"></path><path d="M16 7l3 3"></path><path d="M14 9l2 2"></path></svg>Change password</button>
+<a href="../login/Login.dc.html" role="menuitem" class="sb-mi is-danger" style="width: 100%; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 9px; display: flex; align-items: center; gap: 12px; font-family: inherit; font-size: 14px; font-weight: 500">
+<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"></path><path d="M10 16l-4-4 4-4"></path><path d="M6 12h10"></path></svg>Log out</a>
+</div>
+</sc-if>
+
+<sc-if value="{{expanded}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="{{userCls}}" aria-haspopup="menu" aria-expanded="{{menuStr}}" onClick="{{toggleMenu}}" style="position: relative; z-index: 32; width: 100%; box-sizing: border-box; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; font-family: inherit; text-align: left; cursor: pointer">
+<span aria-hidden="true" style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: #75141A; color: #FFFFFF; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">AO</span>
+<span style="min-width: 0; flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Adaeze Okafor</span>
+<span style="font-size: 12px; color: #5B6472">Super Administrator</span>
+</span>
+<svg class="sb-chev" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M6 15l6-6 6 6"></path></svg>
+</button>
+</sc-if>
+<sc-if value="{{collapsed}}" hint-placeholder-val="{{ false }}">
+<button type="button" class="sb-av" aria-haspopup="menu" aria-expanded="{{menuStr}}" aria-label="Account menu for Adaeze Okafor" title="Adaeze Okafor · Super Administrator" onClick="{{toggleMenu}}" style="position: relative; z-index: 32; width: 44px; height: 44px; border-radius: 999px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<span class="sb-avc" style="width: 36px; height: 36px; border-radius: 999px; background: #75141A; color: #FFFFFF; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">AO</span>
+</button>
+</sc-if>
+</div>
+
+<sc-if value="{{dlgOpen}}" hint-placeholder-val="{{ false }}">
+<div onKeyDown="{{onKey}}" style="position: fixed; inset: 0; z-index: 60; background: rgba(17,24,39,0.42); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box">
+<div role="dialog" aria-modal="true" aria-labelledby="sbpw-h" style="width: 100%; max-width: 440px; max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; background: #FFFFFF; border-radius: 18px; box-shadow: 0 40px 80px -24px rgba(17,24,39,0.45); padding: 28px; display: flex; flex-direction: column; gap: 18px">
+
+<sc-if value="{{formView}}" hint-placeholder-val="{{ true }}">
+<form onSubmit="{{submitPw}}" style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="sbpw-h" style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-size: 28px; font-weight: 400; letter-spacing: -0.01em">Change password</h2>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #4B5563">Use at least 8 characters. You’ll stay signed in on this device.</p>
+</div>
+<button type="button" class="sb-btn" onClick="{{closeDlg}}" aria-label="Close" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="sbpw-cur" style="font-size: 13.5px; font-weight: 500">Current password</label>
+<input id="sbpw-cur" class="{{cls.cur}}" type="password" autoComplete="current-password" value="{{cur}}" onChange="{{onCur}}" aria-invalid="{{inv.cur}}" aria-describedby="{{desc.cur}}" style="height: 48px; width: 100%; box-sizing: border-box; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 15px; color: #1F2937">
+<sc-if value="{{err.hasCur}}" hint-placeholder-val="{{ false }}"><p id="sbpw-cur-err" style="margin: 0; font-size: 13px; color: #B42318">{{err.cur}}</p></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="sbpw-new" style="font-size: 13.5px; font-weight: 500">New password</label>
+<input id="sbpw-new" class="{{cls.nw}}" type="password" autoComplete="new-password" value="{{nw}}" onChange="{{onNw}}" aria-invalid="{{inv.nw}}" aria-describedby="{{desc.nw}}" style="height: 48px; width: 100%; box-sizing: border-box; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 15px; color: #1F2937">
+<sc-if value="{{err.hasNw}}" hint-placeholder-val="{{ false }}"><p id="sbpw-new-err" style="margin: 0; font-size: 13px; color: #B42318">{{err.nw}}</p></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="sbpw-cf" style="font-size: 13.5px; font-weight: 500">Confirm new password</label>
+<input id="sbpw-cf" class="{{cls.cf}}" type="password" autoComplete="new-password" value="{{cf}}" onChange="{{onCf}}" aria-invalid="{{inv.cf}}" aria-describedby="{{desc.cf}}" style="height: 48px; width: 100%; box-sizing: border-box; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 15px; color: #1F2937">
+<sc-if value="{{err.hasCf}}" hint-placeholder-val="{{ false }}"><p id="sbpw-cf-err" style="margin: 0; font-size: 13px; color: #B42318">{{err.cf}}</p></sc-if>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 4px">
+<button type="button" class="sb-btn" onClick="{{closeDlg}}" style="height: 44px; padding: 0 16px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Cancel</button>
+<button type="submit" class="sb-primary" style="height: 44px; padding: 0 18px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Update password</button>
+</div>
+</form>
+</sc-if>
+
+<sc-if value="{{doneView}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 8px 0">
+<span aria-hidden="true" style="width: 52px; height: 52px; border-radius: 999px; background: #EAF5EE; color: #1E5E3A; display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span>
+<h2 id="sbpw-h" style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-size: 28px; font-weight: 400">Password updated</h2>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #4B5563">Use your new password the next time you sign in. This change is recorded in the audit log.</p>
+<button type="button" class="sb-primary" onClick="{{closeDlg}}" style="height: 44px; padding: 0 24px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Done</button>
+</div>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["overview","members","reports","roles","audit"],"default":"overview"},"collapsed":{"editor":"boolean","default":false},"onToggle":{"editor":null},"$preview":{"width":264,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const active = this.props.active ?? 'overview';
+    const controlled = typeof this.props.onToggle === 'function';
+    const local = s.local;
+    const collapsed = controlled ? !!this.props.collapsed : (local == null ? !!this.props.collapsed : local);
+    const defs = [
+      { id: 'overview', label: 'Overview', href: 'Overview.dc.html', d1: 'M4 13h6V4H4z', d2: 'M14 20h6V11h-6zM4 20h6v-3H4zM14 4h6v3h-6z' },
+      { id: 'members', label: 'Members', href: 'Members.dc.html', d1: 'M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1', d2: 'M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8' },
+      { id: 'reports', label: 'Reports', href: '#reports', d1: 'M5 20V10M12 20V4M19 20v-7', d2: 'M3 20h18' },
+      { id: 'roles', label: 'Roles & Permissions', href: 'Roles.dc.html', d1: 'M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z', d2: 'M9 12l2 2 4-4' },
+      { id: 'audit', label: 'Audit Log', href: 'AuditLog.dc.html', d1: 'M12 7v5l3 2', d2: 'M3.5 12a8.5 8.5 0 1 0 2.5-6L3 9M3 4v5h5' }
+    ];
+    const menuOpen = !!s.menu;
+    const dlgOpen = !!s.dlg;
+    const cur = s.cur || '', nw = s.nw || '', cf = s.cf || '';
+    const e = s.err || {};
+    const close = () => this.setState({ menu: false, dlg: false });
+    const bad = (k) => (e[k] ? 'sb-field is-error' : 'sb-field');
+    return {
+      expanded: !collapsed,
+      collapsed,
+      pad: collapsed ? '24px 12px' : '28px 16px 24px',
+      listJustify: collapsed ? 'center' : 'flex-start',
+      liFlex: collapsed ? '0 0 44px' : '1 1 170px',
+      userAlign: collapsed ? 'center' : 'stretch',
+      toggle: () => { this.setState({ menu: false }); if (controlled) this.props.onToggle(); else this.setState({ local: !collapsed }); },
+      items: defs.map((d) => Object.assign({}, d, {
+        cls: d.id === active ? 'sb-link is-active' : 'sb-link',
+        current: d.id === active ? 'page' : undefined
+      })),
+      menuOpen,
+      menuStr: menuOpen ? 'true' : 'false',
+      userCls: menuOpen ? 'sb-user is-open' : 'sb-user',
+      pop: collapsed
+        ? { left: 'calc(100% + 12px)', right: 'auto', bottom: '0', width: '224px' }
+        : { left: '0', right: '0', bottom: 'calc(100% + 8px)', width: 'auto' },
+      toggleMenu: () => this.setState({ menu: !menuOpen }),
+      closeMenu: () => this.setState({ menu: false }),
+      onKey: (ev) => { if (ev && ev.key === 'Escape') close(); },
+      openPw: () => this.setState({ menu: false, dlg: true, done: false, cur: '', nw: '', cf: '', err: {} }),
+      dlgOpen,
+      formView: !s.done,
+      doneView: !!s.done,
+      closeDlg: () => this.setState({ dlg: false, done: false }),
+      cur, nw, cf,
+      onCur: (ev) => this.setState({ cur: ev.target.value, err: Object.assign({}, e, { cur: '' }) }),
+      onNw: (ev) => this.setState({ nw: ev.target.value, err: Object.assign({}, e, { nw: '' }) }),
+      onCf: (ev) => this.setState({ cf: ev.target.value, err: Object.assign({}, e, { cf: '' }) }),
+      cls: { cur: bad('cur'), nw: bad('nw'), cf: bad('cf') },
+      inv: { cur: e.cur ? 'true' : 'false', nw: e.nw ? 'true' : 'false', cf: e.cf ? 'true' : 'false' },
+      desc: { cur: e.cur ? 'sbpw-cur-err' : undefined, nw: e.nw ? 'sbpw-new-err' : undefined, cf: e.cf ? 'sbpw-cf-err' : undefined },
+      err: { cur: e.cur || '', nw: e.nw || '', cf: e.cf || '', hasCur: !!e.cur, hasNw: !!e.nw, hasCf: !!e.cf },
+      submitPw: (ev) => {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        const n = {};
+        if (!cur) n.cur = 'Enter your current password.';
+        if (!nw) n.nw = 'Enter a new password.';
+        else if (nw.length < 8) n.nw = 'Use at least 8 characters.';
+        else if (nw === cur) n.nw = 'Choose a password different from your current one.';
+        if (!cf) n.cf = 'Confirm your new password.';
+        else if (nw && cf !== nw) n.cf = 'Passwords do not match.';
+        if (n.cur || n.nw || n.cf) { this.setState({ err: n }); return; }
+        // Prototype only: nothing is stored or changed.
+        this.setState({ done: true, err: {}, cur: '', nw: '', cf: '' });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -34,6 +34,34 @@ class AdminRaceTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "concurrent assignments to a vacant office serialize: one holder, and the audit replays to it" do
+    root, = User.provision_super_admin!(email: "root@example.com", full_name: "System Admin", by: "Ops")
+    targets = Array.new(4) { |i| user("t#{i}@example.com") }
+
+    results = concurrently(targets) { User.find(it.id).assign_admin_office!(:president, by: User.find(root.id)) }
+
+    assert_equal [ true ] * 4, results, "each runs after the previous one commits; none deadlocks or half-applies"
+    assert_equal 1, User.where(admin_role: "president").count
+    assert_audit_matches_roles
+    assert_equal 4, AdminRoleChange.where(action: "grant").count
+    assert_equal 3, AdminRoleChange.where(action: "revoke").count
+  end
+
+  test "concurrent assignments across both offices and switches keep one holder per office" do
+    root, = User.provision_super_admin!(email: "root@example.com", full_name: "System Admin", by: "Ops")
+    president = user("p@example.com", admin_role: "president")
+    treasurer = user("t@example.com", admin_role: "treasurer")
+    others = Array.new(2) { |i| user("m#{i}@example.com") }
+    jobs = [ [ president, :treasurer ], [ treasurer, :president ], [ others[0], :president ], [ others[1], :treasurer ] ]
+
+    concurrently(jobs) { |target, role| User.find(target.id).assign_admin_office!(role, by: User.find(root.id)) }
+
+    assert_operator User.where(admin_role: "president").count, :<=, 1
+    assert_operator User.where(admin_role: "treasurer").count, :<=, 1
+    assert_audit_matches_roles
+    assert_empty Session.where(admin: true, user: User.where(admin_role: nil)) # demoted admins keep no admin session
+  end
+
   test "concurrent provisioning creates a single system Super Admin" do
     outcomes = concurrently(%w[a b c]) do |name|
       User.provision_super_admin!(email: "#{name}@example.com", full_name: "System #{name}", by: "Ops")
@@ -100,6 +128,14 @@ class AdminRaceTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  # Each account's latest audit row names its current role, so no change escaped the audit.
+  def assert_audit_matches_roles
+    User.where(account_type: "member").find_each do |member|
+      last = member.admin_role_changes.order(:id).last
+      assert_equal member.admin_role.to_s, last&.new_role.to_s, member.email
+    end
+  end
 
   def user(email, **attrs)
     User.create!(full_name: "Some One", email:, password: PASSWORD, email_verified_at: Time.current, **attrs)

@@ -37,6 +37,8 @@ class User < ApplicationRecord
   validates :password, length: { minimum: 12 }, on: %i[password_reset password_change]
   validates :sap_id, uniqueness: true, allow_nil: true
   validates :email_verified_at, presence: true, if: :admin_role?
+  # One holder per office; mirrors users_one_holder_per_office.
+  validates :admin_role, uniqueness: true, if: -> { (president? || treasurer?) && will_save_change_to_admin_role? }
   validate :admin_role_changed_through_change_admin_role, on: :update, if: :will_save_change_to_admin_role?
   validate :admin_role_needs_active_account, if: -> { admin_role? && will_save_change_to_admin_role? }
   validate :super_admin_is_the_system_account
@@ -172,21 +174,46 @@ class User < ApplicationRecord
   # and records it, under the row lock admin login also takes, so a login can't add a session after a
   # revoke commits. Returns false when nothing changes; raises, leaving nothing changed, when rejected.
   # super_admin is never granted or removed here: it belongs to the system account alone.
+  # `by` is the operator's name (rake) or the acting admin (portal), whose user id is recorded.
   def change_admin_role!(role, by:, action:)
-    with_lock do
-      raise ProvisioningError, "super_admin belongs only to the system account" if role.to_s == "super_admin" || super_admin?
+    transaction do
+      User.lock_admin_roles
+      with_lock do
+        raise ProvisioningError, "super_admin belongs only to the system account" if role.to_s == "super_admin" || super_admin?
 
-      previous_role = admin_role
-      next false if previous_role == role&.to_s
+        previous_role = admin_role
+        next false if previous_role == role&.to_s
 
-      @audited_role_change = true
-      update!(admin_role: role)
-      admin_role_changes.create!(previous_role:, new_role: admin_role, action:, changed_by: by)
-      true
+        @audited_role_change = true
+        update!(admin_role: role)
+        admin_role_changes.create!(previous_role:, new_role: admin_role, action:,
+          changed_by: by.is_a?(User) ? by.email : by, changed_by_user: (by if by.is_a?(User)))
+        true
+      end
     end
   ensure
     @audited_role_change = false
   end
+
+  # Gives this account an office (president, treasurer), first demoting whoever holds it: two audit rows,
+  # both accounts' admin sessions ended, all in one transaction, so a failure changes nothing.
+  # Also how a President becomes Treasurer and back.
+  def assign_admin_office!(role, by:)
+    transaction do
+      User.lock_admin_roles
+      holder = User.find_by(admin_role: role.to_s) # read under the lock, so it can't change before we commit
+      holder.change_admin_role!(nil, by:, action: :revoke) if holder && holder != self
+      change_admin_role!(role, by:, action: :grant)
+    end
+  end
+
+  # Every role change takes this transaction-level lock before any user-row lock, so role changes run one
+  # at a time (portal, rake and model alike) and always lock in the same order. Admin login takes only the
+  # row lock and changes no role, so the two can't deadlock. Re-entrant within one transaction.
+  def self.lock_admin_roles
+    connection.execute("SELECT pg_advisory_xact_lock(#{connection.quote(ADMIN_ROLES_LOCK)})")
+  end
+  ADMIN_ROLES_LOCK = 4_201_020_001 # any constant bigint, used only for this lock
 
   def temporary_password_expired?
     temporary_password_expires_at&.past? || false

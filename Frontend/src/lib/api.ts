@@ -299,6 +299,92 @@ export function forgetAdminSession(queryClient: QueryClient) {
   queryClient.setQueryData(adminMeQuery.queryKey, () => null)
 }
 
+// Super Admin management (Backend/docs/auth/admin-access.md). Rails picks the actor and checks the role;
+// the browser names only a target account and an office.
+export type AdminRole = AdminMe["user"]["admin_role"]
+export type Office = "president" | "treasurer"
+export type Administrator = {
+  id: number
+  full_name: string
+  email: string
+  admin_role: AdminRole | null
+  account_status: string
+}
+export type RoleChange = {
+  id: number
+  previous_role: AdminRole | null
+  new_role: AdminRole | null
+  action: string
+  actor: string
+  created_at: string
+  user: { id: number; full_name: string; email: string }
+}
+
+// A 401 means the admin session ended (expired or revoked): like the password page, re-ask Rails, so
+// the guard returns to sign-in saying the session expired.
+const adminGet = async <T>(client: QueryClient, path: string) => {
+  try {
+    return (await apiGet(path)) as T
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401)
+      client.invalidateQueries({ queryKey: adminMeQuery.queryKey })
+    throw error
+  }
+}
+
+export const administratorsQuery = queryOptions({
+  queryKey: [...ADMIN_KEY, "administrators"],
+  queryFn: ({ client }) =>
+    adminGet<{ administrators: Administrator[] }>(
+      client,
+      "/api/v1/admin/administrators"
+    ),
+  retry: false,
+})
+
+export const eligibleAccountsQuery = (q: string) =>
+  queryOptions({
+    queryKey: [...ADMIN_KEY, "eligible", q],
+    queryFn: ({ client }) =>
+      adminGet<{ accounts: Administrator[] }>(
+        client,
+        `/api/v1/admin/administrators/eligible?${new URLSearchParams({ q })}`
+      ),
+    enabled: q.length >= 2,
+    retry: false,
+  })
+
+export const roleChangesQuery = queryOptions({
+  queryKey: [...ADMIN_KEY, "role_changes"],
+  queryFn: ({ client }) =>
+    adminGet<{ role_changes: RoleChange[] }>(
+      client,
+      "/api/v1/admin/role_changes"
+    ),
+  retry: false,
+})
+
+// Assigns or switches an office (Rails demotes its current holder), or revokes with null.
+export function useChangeAdminRole() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, role }: { id: number; role: Office | null }) =>
+      apiPatch(`/api/v1/admin/administrators/${id}`, { role }) as Promise<{
+        administrator: Administrator
+        changed: boolean
+      }>,
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 401)
+        queryClient.invalidateQueries({ queryKey: adminMeQuery.queryKey })
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: ADMIN_KEY,
+        predicate: (query) => query.queryKey[1] !== "me",
+      }),
+  })
+}
+
 // Every application write names the applicant it is meant for. After a sign-in changes in another
 // tab, Rails refuses it (409 identity_mismatch) instead of writing into someone else's application;
 // that refusal, like an answer for the wrong applicant, is an IdentityMismatch.

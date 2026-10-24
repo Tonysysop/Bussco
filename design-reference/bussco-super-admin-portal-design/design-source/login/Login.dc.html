@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BUSSCO Admin Sign-in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1F2937}a:hover{color:#75141A}
+.bx-input{border:1px solid #D1D5DB;background:#FFFFFF;transition:border-color .15s ease,box-shadow .15s ease}
+.bx-input:hover{border-color:#9CA3AF}
+.bx-input:focus{outline:none;border-color:#9E1B22;box-shadow:0 0 0 3px rgba(158,27,34,.16)}
+.bx-input.is-error{border-color:#B42318;background:#FFFBFA}
+.bx-input.is-error:focus{box-shadow:0 0 0 3px rgba(180,35,24,.16)}
+.bx-input[readonly]{background:#F9FAFB;color:#6B7280}
+.bx-input::placeholder{color:#8A929E}
+.bx-toggle{background:transparent;color:#5B6472}
+.bx-toggle:hover{background:#F3F4F6;color:#1F2937}
+.bx-toggle:focus-visible{outline:2px solid #9E1B22;outline-offset:-2px}
+.bx-primary{background:#9E1B22;color:#FFFFFF;transition:background .15s ease}
+.bx-primary:hover{background:#75141A}
+.bx-primary:focus-visible{outline:2px solid #75141A;outline-offset:3px}
+.bx-primary:disabled{background:#75141A;cursor:progress}
+.bx-back{text-decoration:none}
+.bx-back:hover{text-decoration:underline;text-underline-offset:4px}
+.bx-back:focus-visible{outline:2px solid #9E1B22;outline-offset:4px;border-radius:6px}
+@keyframes bxspin{to{transform:rotate(360deg)}}
+.bx-spin{animation:bxspin .8s linear infinite}
+@media (prefers-reduced-motion: reduce){.bx-spin{animation-duration:2.4s}}
+</style>
+</helmet>
+<div style="position: relative; width: {{L.w}}px; min-height: {{L.h}}px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; background: #F8F9FB; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2937">
+
+<div aria-hidden="true" style="position: absolute; left: {{L.wmLeft}}px; top: {{L.wmTop}}px; width: {{L.wm}}px; height: {{L.wm}}px; opacity: {{wmOpacity}}; pointer-events: none">
+<dc-import name="Mark" size="{{L.wm}}" tone="{{wmTone}}" hint-size="100%,100%"></dc-import>
+</div>
+
+<header style="position: relative; display: flex; align-items: center; gap: 12px; padding: {{L.headPad}}">
+<img src="../../assets/bussco-emblem.png" alt="" style="display: block; width: 30px; height: 33px; object-fit: contain">
+<span style="font-family: 'Newsreader', Georgia, serif; font-size: 22px; font-weight: 500; letter-spacing: 0.06em; color: #75141A">BUSSCO</span>
+<span aria-hidden="true" style="width: 1px; height: 18px; background: #D1D5DB"></span>
+<span style="font-size: 13px; color: #5B6472; letter-spacing: 0.01em">Administrative Portal</span>
+</header>
+
+<main style="position: relative; flex-grow: 1; display: flex; flex-direction: column; justify-content: {{L.vJustify}}; align-items: {{L.hAlign}}; padding: {{L.mainPad}}">
+<div style="width: {{L.colW}}px; max-width: 100%; display: flex; flex-direction: column; gap: {{L.gap}}px">
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<p style="margin: 0; display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.18em; color: #9E1B22"><span aria-hidden="true" style="width: 28px; height: 1px; background: #9E1B22"></span>BUSSCO ADMINISTRATION</p>
+<h1 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 400; font-size: {{L.h1}}px; line-height: 1.02; letter-spacing: -0.025em; color: #1F2937; width: 484px; height: 115px">Welcome Back</h1>
+<p style="margin: 0; font-size: {{L.lead}}px; line-height: 1.55; color: #4B5563">Sign in to access your administrative workspace.</p>
+</div>
+
+<form onSubmit="{{submit}}" aria-busy="{{busyStr}}" aria-label="Administrator sign in" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 16px; box-shadow: 0 1px 2px rgba(31,41,55,0.04), 0 24px 48px -24px rgba(31,41,55,0.18); padding: {{L.cardPad}}px; display: flex; flex-direction: column; gap: 20px">
+
+<sc-if value="{{showExpired}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 10px; background: #F6F4EF; border: 1px solid #E4DCCB; color: #4A3F2A; font-size: 13.5px; line-height: 1.5">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+<div><strong style="display: block; font-weight: 600">Your session has expired</strong>For your security, please sign in again.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{showIncorrect}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 10px; background: #FEF3F2; border: 1px solid #FECDCA; color: #7A271A; font-size: 13.5px; line-height: 1.5">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16.2v.3"></path></svg>
+<div><strong style="display: block; font-weight: 600">Incorrect email or password</strong>Check your details and try again.</div>
+</div>
+</sc-if>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="bx-email" style="font-size: 13.5px; font-weight: 500; color: #1F2937">Corporate Email Address</label>
+<input id="bx-email" class="{{emailClass}}" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck="false" placeholder="name@company.com" value="{{email}}" onChange="{{onEmail}}" readOnly="{{signing}}" aria-invalid="{{emailInvalid}}" aria-describedby="{{emailDesc}}" style="height: 48px; width: 100%; box-sizing: border-box; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 15px; color: #1F2937">
+<sc-if value="{{hasErrEmail}}" hint-placeholder-val="{{ false }}">
+<p id="bx-email-err" style="margin: 0; display: flex; gap: 6px; align-items: center; font-size: 13px; line-height: 1.4; color: #B42318"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16.2v.3"></path></svg>{{errEmail}}</p>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="bx-password" style="font-size: 13.5px; font-weight: 500; color: #1F2937">Password</label>
+<div style="position: relative">
+<input id="bx-password" class="{{pwClass}}" type="{{pwType}}" autoComplete="current-password" value="{{password}}" onChange="{{onPw}}" readOnly="{{signing}}" aria-invalid="{{pwInvalid}}" aria-describedby="{{pwDesc}}" style="height: 48px; width: 100%; box-sizing: border-box; padding: 0 56px 0 14px; border-radius: 10px; font-family: inherit; font-size: 15px; letter-spacing: 0.02em; color: #1F2937">
+<button type="button" class="bx-toggle" onClick="{{toggle}}" aria-label="{{toggleLabel}}" aria-pressed="{{pressedStr}}" aria-controls="bx-password" style="position: absolute; right: 2px; top: 2px; width: 44px; height: 44px; border: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0">
+<sc-if value="{{showPw}}" hint-placeholder-val="{{ false }}">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"></path><path d="M10.6 5.1A10 10 0 0 1 12 5c5.5 0 9 5.5 9 7a11 11 0 0 1-2.6 3.6"></path><path d="M6.6 6.6C4.3 8 3 10.6 3 12c0 1.5 3.5 7 9 7a9.6 9.6 0 0 0 5.4-1.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg>
+</sc-if>
+<sc-if value="{{hidePwIcon}}" hint-placeholder-val="{{ true }}">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c0-1.5 3.5-7 9-7s9 5.5 9 7-3.5 7-9 7-9-5.5-9-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+</sc-if>
+</button>
+</div>
+<sc-if value="{{hasErrPw}}" hint-placeholder-val="{{ false }}">
+<p id="bx-password-err" style="margin: 0; display: flex; gap: 6px; align-items: center; font-size: 13px; line-height: 1.4; color: #B42318"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16.2v.3"></path></svg>{{errPw}}</p>
+</sc-if>
+</div>
+
+<button type="submit" class="bx-primary" disabled="{{signing}}" style="margin-top: 4px; height: 52px; width: 100%; border: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; cursor: pointer">
+<sc-if value="{{signing}}" hint-placeholder-val="{{ false }}">
+<svg class="bx-spin" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.3)"></circle><path d="M21 12a9 9 0 0 0-9-9" stroke="#FFFFFF"></path></svg>
+<span>Signing in…</span>
+</sc-if>
+<sc-if value="{{idle}}" hint-placeholder-val="{{ true }}">
+<span>Sign In to Admin Portal</span>
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+</sc-if>
+</button>
+
+<div style="display: flex; gap: 10px; align-items: flex-start; padding-top: 18px; border-top: 1px solid #EEF0F3; font-size: 13px; line-height: 1.45; color: #5B6472">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+<span>Restricted access. Authorized administrators only.</span>
+</div>
+</form>
+
+<a href="#member-portal" class="bx-back" style="align-self: {{L.backAlign}}; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; font-weight: 500">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M11 6l-6 6 6 6"></path></svg>
+Return to Member Portal</a>
+
+</div>
+</main>
+
+<footer style="position: relative; padding: {{L.footPad}}; font-size: 12px; line-height: 1.5; color: #5B6472">BUA Senior Staff Multipurpose Cooperative Society</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"viewport":{"editor":"enum","options":["desktop","tablet","mobile","mobile-sm"],"default":"desktop"},"previewState":{"editor":"enum","options":["default","validation","incorrect","signing","expired"],"default":"default"},"watermarkOpacity":{"editor":"range","min":0.02,"max":0.12,"step":0.005,"default":0.06},"watermarkTone":{"editor":"enum","options":["mono","color"],"default":"mono"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  layouts() {
+    return {
+      desktop: { w: 1440, h: 900, headPad: '40px 80px 0', mainPad: '48px 80px 48px 168px', hAlign: 'flex-start', vJustify: 'center', colW: 440, h1: 72, lead: 17, cardPad: 36, gap: 28, footPad: '0 80px 40px', wm: 1080, wmLeft: 800, wmTop: -90, backAlign: 'flex-start' },
+      tablet: { w: 768, h: 1024, headPad: '36px 48px 0', mainPad: '48px', hAlign: 'center', vJustify: 'center', colW: 472, h1: 64, lead: 17, cardPad: 36, gap: 28, footPad: '0 48px 36px', wm: 960, wmLeft: 250, wmTop: 520, backAlign: 'flex-start' },
+      mobile: { w: 390, h: 900, headPad: '24px 20px 0', mainPad: '36px 20px 32px', hAlign: 'stretch', vJustify: 'flex-start', colW: 350, h1: 48, lead: 16, cardPad: 24, gap: 24, footPad: '0 20px 28px', wm: 620, wmLeft: 120, wmTop: -200, backAlign: 'flex-start' },
+      'mobile-sm': { w: 320, h: 860, headPad: '20px 16px 0', mainPad: '28px 16px', hAlign: 'stretch', vJustify: 'flex-start', colW: 288, h1: 40, lead: 15, cardPad: 20, gap: 22, footPad: '0 16px 24px', wm: 500, wmLeft: 96, wmTop: -160, backAlign: 'flex-start' }
+    };
+  }
+  seed(s) {
+    const base = { email: '', password: '', showPw: false, phase: 'idle', errEmail: '', errPw: '', expired: false };
+    if (s === 'validation') return Object.assign(base, { email: 't.adebayo@', errEmail: 'Enter a valid email address, e.g. name@company.com.', errPw: 'Enter your password.' });
+    if (s === 'incorrect') return Object.assign(base, { email: 't.adebayo@company.com', phase: 'error' });
+    if (s === 'signing') return Object.assign(base, { email: 't.adebayo@company.com', password: 'adminpass2026', phase: 'signing' });
+    if (s === 'expired') return Object.assign(base, { expired: true });
+    return base;
+  }
+  componentDidMount() {
+    this.setState(Object.assign(this.seed(this.props.previewState ?? 'default'), { ready: true }));
+  }
+  componentDidUpdate(prev) {
+    if (prev.previewState !== this.props.previewState) {
+      clearTimeout(this.t);
+      this.setState(Object.assign(this.seed(this.props.previewState ?? 'default'), { ready: true }));
+    }
+  }
+  componentWillUnmount() { clearTimeout(this.t); }
+  renderVals() {
+    const all = this.layouts();
+    const L = all[this.props.viewport ?? 'desktop'] || all.desktop;
+    const st = (this.state && this.state.ready) ? this.state : this.seed(this.props.previewState ?? 'default');
+    const signing = st.phase === 'signing';
+    const hasErrEmail = !!st.errEmail;
+    const hasErrPw = !!st.errPw;
+    const submit = (e) => {
+      if (e && e.preventDefault) e.preventDefault();
+      if (signing) return;
+      const email = (st.email || '').trim();
+      let errEmail = '';
+      if (!email) errEmail = 'Enter your corporate email address.';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errEmail = 'Enter a valid email address, e.g. name@company.com.';
+      const errPw = st.password ? '' : 'Enter your password.';
+      if (errEmail || errPw) { this.setState({ errEmail, errPw, phase: 'idle' }); return; }
+      this.setState({ errEmail: '', errPw: '', phase: 'signing', showPw: false });
+      clearTimeout(this.t);
+      // Prototype only: never authenticates. Always resolves to incorrect credentials.
+      this.t = setTimeout(() => this.setState({ phase: 'error', password: '', expired: false }), 1700);
+    };
+    return {
+      L,
+      wmOpacity: this.props.watermarkOpacity ?? 0.06,
+      wmTone: this.props.watermarkTone ?? 'mono',
+      email: st.email,
+      password: st.password,
+      showPw: !!st.showPw,
+      hidePwIcon: !st.showPw,
+      pwType: st.showPw ? 'text' : 'password',
+      toggleLabel: st.showPw ? 'Hide password' : 'Show password',
+      pressedStr: st.showPw ? 'true' : 'false',
+      signing,
+      idle: !signing,
+      busyStr: signing ? 'true' : 'false',
+      showIncorrect: st.phase === 'error',
+      showExpired: !!st.expired && st.phase !== 'error',
+      errEmail: st.errEmail,
+      errPw: st.errPw,
+      hasErrEmail,
+      hasErrPw,
+      emailClass: hasErrEmail ? 'bx-input is-error' : 'bx-input',
+      pwClass: hasErrPw ? 'bx-input is-error' : 'bx-input',
+      emailInvalid: hasErrEmail ? 'true' : 'false',
+      pwInvalid: hasErrPw ? 'true' : 'false',
+      emailDesc: hasErrEmail ? 'bx-email-err' : undefined,
+      pwDesc: hasErrPw ? 'bx-password-err' : undefined,
+      onEmail: (e) => this.setState({ email: e.target.value, errEmail: '', phase: st.phase === 'error' ? 'idle' : st.phase }),
+      onPw: (e) => this.setState({ password: e.target.value, errPw: '', phase: st.phase === 'error' ? 'idle' : st.phase }),
+      toggle: () => this.setState({ showPw: !st.showPw }),
+      submit
+    };
+  }
+}
+</script>
+</body>
+</html>

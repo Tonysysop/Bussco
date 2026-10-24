@@ -81,12 +81,29 @@ describe("AdminPasswordPage", () => {
 
   it("changes the password with the rotated token, then opens the portal", async () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem")
-    const fetchMock = stubFetch(TEMPORARY, SAVED, FULL)
+    const fetchMock = stubFetch(
+      TEMPORARY,
+      SAVED,
+      FULL,
+      {
+        path: "/api/v1/admin/administrators",
+        status: 200,
+        body: { administrators: [] },
+      },
+      {
+        path: "/api/v1/admin/role_changes",
+        status: 200,
+        body: { role_changes: [] },
+      },
+      { path: LOGIN, status: 200, body: { csrf_token: "after-logout" } },
+      NO_ADMIN
+    )
     const router = await renderRoute("/admin/password")
 
-    await fill()
+    const user = await fill()
 
-    expect(await screen.findByText("Super Admin")).toBeInTheDocument()
+    // The Super Admin lands on the workspace Overview.
+    await screen.findByRole("heading", { level: 1, name: "Overview" })
     expect(router.state.location.pathname).toBe("/admin")
     const [call] = callsTo(fetchMock, PASSWORD, "PATCH")
     expect(sentBody(call)).toEqual({
@@ -94,6 +111,14 @@ describe("AdminPasswordPage", () => {
       password: "a brand new password",
     })
     expect(csrfHeader(call)).toBe("csrf-token-1")
+
+    // The next write sends the token Rails rotated with the password change.
+    await user.click(screen.getByRole("button", { name: /System Admin/ }))
+    await user.click(await screen.findByRole("menuitem", { name: "Log out" }))
+    await screen.findByRole("heading", { name: "Welcome Back" })
+    expect(csrfHeader(callsTo(fetchMock, LOGIN, "DELETE")[0])).toBe(
+      "after-change"
+    )
     expect(setItem).not.toHaveBeenCalled()
   })
 

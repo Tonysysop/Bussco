@@ -52,7 +52,7 @@ describe("AdminLoginPage", () => {
 
     await fillAndSubmit()
 
-    expect(await screen.findByText("Super Admin")).toBeInTheDocument()
+    await screen.findByRole("heading", { level: 1, name: "Overview" })
     expect(router.state.location.pathname).toBe("/admin")
     const [call] = callsTo(fetchMock, SESSION)
     expect(sentBody(call)).toEqual({
@@ -195,7 +195,7 @@ describe("AdminLoginPage", () => {
     expect(screen.queryByLabelText("Password")).not.toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Try again" }))
 
-    expect(await screen.findByText("Super Admin")).toBeInTheDocument()
+    await screen.findByRole("heading", { level: 1, name: "Overview" })
     expect(router.state.location.pathname).toBe("/admin")
     expect(callsTo(fetchMock, SESSION)).toHaveLength(1)
   })
@@ -228,7 +228,7 @@ describe("AdminLoginPage", () => {
     const router = await renderRoute(
       "/admin/login?next=%2F%2Fevil.example%2Fadmin"
     )
-    await screen.findByText("Super Admin")
+    await screen.findByRole("heading", { level: 1, name: "Overview" })
     expect(router.state.location.pathname).toBe("/admin")
   })
 

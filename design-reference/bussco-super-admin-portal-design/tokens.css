@@ -1,0 +1,8 @@
+:root{
+  --bussco-burgundy:#9E1B22; --bussco-burgundy-deep:#75141A;
+  --bussco-page:#F8F9FB; --bussco-card:#FFFFFF; --bussco-border:#E5E7EB;
+  --bussco-text:#1F2937; --bussco-muted:#6B7280;
+  --font-display:'Newsreader',Georgia,serif;
+  --font-body:'Instrument Sans',system-ui,sans-serif;
+  --sidebar-w:248px; --sidebar-w-collapsed:76px;
+}

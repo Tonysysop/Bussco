@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BUSSCO Super Admin — Roles &amp; Permissions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Instrument+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+.sb-wrap{max-width:100%}
+@media (max-width: 860px){.sb-wrap{position:static !important;align-self:stretch !important;flex-basis:100% !important}}
+a{color:#75141A}a:hover{color:#9E1B22}
+.bx-btn{background:#FFFFFF;color:#1F2937;border:1px solid #D1D5DB}
+.bx-btn:hover{background:#F9FAFB;border-color:#9CA3AF}
+.bx-btn-primary{background:#9E1B22;color:#FFFFFF;border:1px solid #9E1B22}
+.bx-btn-primary:hover{background:#75141A;border-color:#75141A}
+.bx-btn-primary:disabled{background:#D9A3A6;border-color:#D9A3A6;cursor:not-allowed}
+.bx-btn:focus-visible,.bx-btn-primary:focus-visible,.bx-sw:focus-visible,.bx-opt:focus-visible{outline:2px solid #9E1B22;outline-offset:2px}
+.bx-search{border:1px solid #D1D5DB;background:#FFFFFF}
+.bx-search:focus{outline:none;border-color:#9E1B22;box-shadow:0 0 0 3px rgba(158,27,34,.16)}
+.bx-sw{background:transparent}
+.bx-track{background:#D1D5DB;transition:background .15s ease}
+.bx-knob{transform:translateX(0);transition:transform .15s ease}
+.bx-sw.is-on .bx-track{background:#9E1B22}
+.bx-sw.is-on .bx-knob{transform:translateX(16px)}
+.bx-sw:hover .bx-track{box-shadow:0 0 0 4px rgba(31,41,55,.06)}
+.bx-opt{background:#FFFFFF;border:1px solid #E5E7EB}
+.bx-opt:hover{border-color:#9CA3AF}
+.bx-opt.is-on{border-color:#9E1B22;background:#FCF6F6;box-shadow:0 0 0 1px #9E1B22 inset}
+.bx-prow:hover{background:#FAFAFB}
+@media (prefers-reduced-motion: reduce){.bx-track,.bx-knob{transition:none}}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F8F9FB; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2937">
+
+<div class="sb-wrap" style="flex: 1 1 {{sbBasis}}; display: flex; flex-direction: column; background: #FFFFFF; border-right: 1px solid #E5E7EB; position: sticky; top: 0; align-self: flex-start; z-index: 10">
+<dc-import name="Sidebar" active="roles" collapsed="{{sbCollapsed}}" on-toggle="{{toggleSb}}" hint-size="100%,900px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 36px clamp(16px, 3vw, 40px) 48px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px">
+<p style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.18em; color: #9E1B22"><span aria-hidden="true" style="width: 24px; height: 1px; background: #9E1B22"></span>SUPER ADMIN</p>
+<h1 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 400; font-size: 44px; line-height: 1.05; letter-spacing: -0.02em">Roles &amp; Permissions</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4B5563">Appoint the cooperative’s executive officers and decide what each office can do. Every change is recorded in the audit log.</p>
+</div>
+<span style="height: 28px; box-sizing: border-box; padding: 0 10px; border-radius: 999px; border: 1px dashed #C4C9D1; font-size: 12px; font-weight: 500; color: #5B6472; display: inline-flex; align-items: center">Sample data</span>
+</div>
+
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #EAF5EE; border: 1px solid #BFE0CB; color: #1E5E3A; font-size: 14px">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8 12l3 3 5-6"></path></svg>
+<span style="flex-grow: 1">{{toast}}</span>
+<button type="button" class="bx-btn" onClick="{{closeToast}}" aria-label="Dismiss" style="width: 36px; height: 36px; border-radius: 8px; border-color: transparent; background: transparent; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; color: #1E5E3A"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+</sc-if>
+
+<section aria-labelledby="rl-off-h" style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 id="rl-off-h" style="margin: 0; font-size: 17px; font-weight: 600">Executive officers</h2>
+<p style="margin: 0; font-size: 13.5px; color: #5B6472">One member per office. Reassigning an office returns the previous holder to standard member access.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px">
+<sc-for list="{{offices}}" as="o" hint-placeholder-count="3">
+<div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.16em; color: #9E1B22">{{o.titleCaps}}</span>
+<span style="font-size: 12.5px; color: #4B5563; font-variant-numeric: tabular-nums">{{o.count}} of 15 permissions</span>
+</div>
+<div style="display: flex; align-items: center; gap: 14px">
+<span aria-hidden="true" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 999px; background: #F7ECEC; color: #75141A; font-family: 'Newsreader', Georgia, serif; font-size: 18px; font-weight: 500; display: flex; align-items: center; justify-content: center">{{o.initials}}</span>
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-size: 22px; line-height: 1.1">{{o.name}}</span>
+<span style="font-size: 12.5px; color: #5B6472">{{o.id}} · {{o.dept}} · since {{o.since}}</span>
+</div>
+</div>
+<div role="img" aria-label="{{o.meterLabel}}" style="height: 6px; border-radius: 999px; background: #F1F2F5; overflow: hidden"><span style="display: block; height: 100%; width: {{o.meter}}; border-radius: 999px; background: #9E1B22"></span></div>
+<button type="button" class="bx-btn" onClick="{{o.reassign}}" style="height: 44px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M21 3l-7 7"></path><path d="M8 21H3v-5"></path><path d="M3 21l7-7"></path></svg>Reassign {{o.title}}</button>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="rl-mx-h" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 14px; display: flex; flex-direction: column; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid #EEF0F3">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 id="rl-mx-h" style="margin: 0; font-size: 17px; font-weight: 600">Permission matrix</h2>
+<p style="margin: 0; font-size: 13.5px; color: #5B6472">Super Admin always holds every permission. Only Super Admin can manage roles.</p>
+</div>
+<sc-if value="{{dirty}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<span style="font-size: 13.5px; font-weight: 500; color: #7A4E0E; display: inline-flex; align-items: center; gap: 8px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #B7791F"></span>{{dirtyText}}</span>
+<button type="button" class="bx-btn" onClick="{{discard}}" style="height: 40px; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Discard</button>
+<button type="button" class="bx-btn-primary" onClick="{{save}}" style="height: 40px; padding: 0 16px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Save changes</button>
+</div>
+</sc-if>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="background: #FAFAFB; color: #5B6472; font-size: 12px; letter-spacing: 0.04em">
+<th scope="col" style="padding: 12px 20px; text-align: left; font-weight: 600; border-bottom: 1px solid #EEF0F3">PERMISSION</th>
+<th scope="col" style="width: 128px; padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #EEF0F3">SUPER ADMIN</th>
+<th scope="col" style="width: 128px; padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #EEF0F3">PRESIDENT</th>
+<th scope="col" style="width: 128px; padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #EEF0F3">VICE PRESIDENT</th>
+<th scope="col" style="width: 128px; padding: 12px 8px; font-weight: 600; border-bottom: 1px solid #EEF0F3">TREASURER</th>
+</tr>
+</thead>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="5">
+<tbody>
+<tr><th scope="colgroup" colspan="5" style="padding: 18px 20px 8px; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; color: #9E1B22">{{g.nameCaps}}</th></tr>
+<sc-for list="{{g.items}}" as="p" hint-placeholder-count="3">
+<tr class="bx-prow">
+<th scope="row" style="padding: 12px 20px; text-align: left; font-weight: 400; border-top: 1px solid #F1F2F5">
+<span style="display: block; font-weight: 500; color: #1F2937">{{p.label}}</span>
+<span style="display: block; margin-top: 2px; font-size: 12.5px; color: #5B6472">{{p.hint}}</span>
+</th>
+<td style="padding: 6px 8px; text-align: center; border-top: 1px solid #F1F2F5">
+<span role="img" aria-label="Super Admin: always allowed" style="display: inline-flex; align-items: center; gap: 6px; color: #75141A"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A929E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span>
+</td>
+<sc-for list="{{p.cells}}" as="c" hint-placeholder-count="3">
+<td style="padding: 6px 8px; text-align: center; border-top: 1px solid #F1F2F5; background: {{c.bg}}">
+<sc-if value="{{c.locked}}" hint-placeholder-val="{{ false }}">
+<span role="img" aria-label="{{c.aria}}" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: #8A929E"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span>
+</sc-if>
+<sc-if value="{{c.open}}" hint-placeholder-val="{{ true }}">
+<button type="button" role="switch" class="{{c.cls}}" aria-checked="{{c.checked}}" aria-label="{{c.aria}}" onClick="{{c.toggle}}" style="width: 52px; height: 44px; border: 0; border-radius: 10px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer">
+<span class="bx-track" style="position: relative; display: block; width: 40px; height: 24px; border-radius: 999px"><span class="bx-knob" style="position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(31,41,55,0.3)"></span></span>
+</button>
+</sc-if>
+</td>
+</sc-for>
+</tr>
+</sc-for>
+</tbody>
+</sc-for>
+</table>
+</div>
+</section>
+
+<sc-if value="{{modalOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: fixed; inset: 0; z-index: 20; background: rgba(17,24,39,0.42); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box">
+<div role="dialog" aria-modal="true" aria-labelledby="rl-dlg-h" style="width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; background: #FFFFFF; border-radius: 18px; box-shadow: 0 40px 80px -24px rgba(17,24,39,0.45); padding: 28px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 id="rl-dlg-h" style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-size: 28px; font-weight: 400; letter-spacing: -0.01em">Assign {{mTitle}}</h2>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: #4B5563">{{mCurrent}} currently holds this office and will return to member access.</p>
+</div>
+<button type="button" class="bx-btn" onClick="{{closeModal}}" aria-label="Close" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+<div style="position: relative">
+<label for="rl-dlg-q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search active members</label>
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="1.8" stroke-linecap="round" style="position: absolute; left: 14px; top: 13px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input id="rl-dlg-q" class="bx-search" type="search" placeholder="Search active members" value="{{mq}}" onChange="{{onMq}}" style="width: 100%; height: 44px; box-sizing: border-box; padding: 0 14px 0 42px; border-radius: 10px; font-family: inherit; font-size: 14px; color: #1F2937">
+</div>
+<div role="radiogroup" aria-label="Eligible members" style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{candidates}}" as="m" hint-placeholder-count="5">
+<button type="button" role="radio" class="{{m.cls}}" aria-checked="{{m.checked}}" onClick="{{m.pick}}" style="min-height: 56px; box-sizing: border-box; padding: 8px 14px; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-align: left; font-family: inherit; cursor: pointer">
+<span aria-hidden="true" style="width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: #EEF0F3; color: #374151; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{m.initials}}</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600; color: #1F2937">{{m.name}}</span><span style="font-size: 12.5px; color: #5B6472">{{m.id}} · {{m.dept}}</span></span>
+<span aria-hidden="true" style="width: 18px; height: 18px; flex-shrink: 0; box-sizing: border-box; border-radius: 999px; border: {{m.ring}}"></span>
+</button>
+</sc-for>
+<sc-if value="{{noCandidates}}" hint-placeholder-val="{{ false }}"><p style="margin: 0; padding: 16px; text-align: center; font-size: 14px; color: #5B6472">No active members match “{{mq}}”.</p></sc-if>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 4px">
+<button type="button" class="bx-btn" onClick="{{closeModal}}" style="height: 44px; padding: 0 16px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer">Cancel</button>
+<button type="button" class="bx-btn-primary" onClick="{{confirm}}" disabled="{{noPick}}" style="height: 44px; padding: 0 18px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Assign as {{mTitle}}</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1640}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    try { if (window.localStorage.getItem('bussco.sidebarCollapsed') === '1') this.setState({ sbCollapsed: true }); } catch (e) {}
+  }
+  sb() {
+    const c = !!(this.state && this.state.sbCollapsed);
+    return {
+      sbCollapsed: c,
+      sbBasis: c ? '76px' : '248px',
+      toggleSb: () => {
+        const n = !c;
+        try { window.localStorage.setItem('bussco.sidebarCollapsed', n ? '1' : '0'); } catch (e) {}
+        this.setState({ sbCollapsed: n });
+      }
+    };
+  }
+  groups() {
+    return [
+      { name: 'Members', items: [['m.view', 'View member directory', 'Profiles, balances and account status'], ['m.edit', 'Add & edit members', 'Create accounts and update member details'], ['m.suspend', 'Suspend or reactivate members', 'Pause or restore a member’s access']] },
+      { name: 'Savings', items: [['s.view', 'View savings ledgers', 'Individual and pooled savings records'], ['s.record', 'Record contributions', 'Post monthly payroll deductions'], ['s.withdraw', 'Approve withdrawals', 'Release member savings withdrawals']] },
+      { name: 'Loans', items: [['l.view', 'View loan applications', 'Applications, guarantors and schedules'], ['l.review', 'Review & recommend loans', 'First-stage eligibility review'], ['l.approve', 'Final loan approval', 'Approve or decline reviewed applications'], ['l.disburse', 'Disburse approved loans', 'Release funds and start repayment']] },
+      { name: 'Finance & reports', items: [['r.view', 'View financial reports', 'Statements, portfolio and dividend reports'], ['r.export', 'Export reports', 'Download reports as CSV or PDF'], ['rates', 'Manage interest & dividend rates', 'Change rates used in calculations']] },
+      { name: 'Governance', items: [['audit', 'View audit log', 'Every administrative action, with who and when'], ['roles', 'Manage roles & permissions', 'Reserved for Super Admin', true]] }
+    ];
+  }
+  defaults() {
+    return {
+      president: ['m.view', 'm.edit', 'm.suspend', 's.view', 'l.view', 'l.approve', 'r.view', 'r.export', 'rates', 'audit'],
+      vp: ['m.view', 's.view', 'l.view', 'l.review', 'r.view', 'r.export', 'audit'],
+      treasurer: ['m.view', 's.view', 's.record', 's.withdraw', 'l.view', 'l.disburse', 'r.view', 'r.export', 'audit']
+    };
+  }
+  pool() {
+    return [
+      ['Chinedu Eze', 'BUA-01482', 'Engineering'], ['Fatima Bello', 'BUA-00917', 'Procurement'],
+      ['Oluwaseun Adeyemi', 'BUA-02203', 'Sales'], ['Ibrahim Musa', 'BUA-01105', 'Logistics'],
+      ['Ngozi Okonkwo', 'BUA-00342', 'Legal'], ['Grace Ojo', 'BUA-01764', 'Internal Audit']
+    ];
+  }
+  renderVals() {
+    const s = this.state || {};
+    const defs = this.defaults();
+    const saved = s.saved || defs;
+    const perms = s.perms || defs;
+    const holders = s.holders || {
+      president: { name: 'Emeka Nwosu', id: 'BUA-00057', dept: 'Operations', since: 'Jan 2025' },
+      vp: { name: 'Halima Yusuf', id: 'BUA-00231', dept: 'Human Resources', since: 'Jan 2025' },
+      treasurer: { name: 'Tunde Bakare', id: 'BUA-00189', dept: 'Finance', since: 'Jan 2025' }
+    };
+    const titles = { president: 'President', vp: 'Vice President', treasurer: 'Treasurer' };
+    const roleKeys = ['president', 'vp', 'treasurer'];
+    const has = (set, k) => set.indexOf(k) !== -1;
+    const initials = (n) => { const p = n.split(' '); return p[0][0] + p[p.length - 1][0]; };
+    let dirtyCount = 0;
+    const groups = this.groups().map((g) => ({
+      nameCaps: g.name.toUpperCase(),
+      items: g.items.map((it) => ({
+        label: it[1], hint: it[2],
+        cells: roleKeys.map((rk) => {
+          const on = has(perms[rk], it[0]);
+          const changed = on !== has(saved[rk], it[0]);
+          if (changed) dirtyCount++;
+          return {
+            locked: !!it[3], open: !it[3],
+            cls: on ? 'bx-sw is-on' : 'bx-sw', checked: on ? 'true' : 'false',
+            aria: it[3] ? titles[rk] + ': ' + it[1] + ', not available' : titles[rk] + ': ' + it[1],
+            bg: changed ? '#FFF8E8' : 'transparent',
+            toggle: () => {
+              const next = Object.assign({}, perms);
+              next[rk] = on ? perms[rk].filter((k) => k !== it[0]) : perms[rk].concat([it[0]]);
+              this.setState({ perms: next, saved, toast: '' });
+            }
+          };
+        })
+      }))
+    }));
+    const taken = roleKeys.map((k) => holders[k].id);
+    const mq = (s.mq || '').trim().toLowerCase();
+    const candidates = this.pool().filter((m) => taken.indexOf(m[1]) === -1 && (!mq || (m[0] + ' ' + m[1]).toLowerCase().indexOf(mq) !== -1)).map((m) => ({
+      name: m[0], id: m[1], dept: m[2], initials: initials(m[0]),
+      cls: s.pick === m[1] ? 'bx-opt is-on' : 'bx-opt', checked: s.pick === m[1] ? 'true' : 'false',
+      ring: s.pick === m[1] ? '5px solid #9E1B22' : '1.5px solid #9CA3AF',
+      pick: () => this.setState({ pick: m[1] })
+    }));
+    const modalRole = s.modal;
+    return {
+      ...this.sb(),
+      offices: roleKeys.map((rk) => ({
+        title: titles[rk], titleCaps: titles[rk].toUpperCase(),
+        name: holders[rk].name, id: holders[rk].id, dept: holders[rk].dept, since: holders[rk].since,
+        initials: initials(holders[rk].name), count: saved[rk].length,
+        meter: (saved[rk].length / 15 * 100).toFixed(1) + '%',
+        meterLabel: saved[rk].length + ' of 15 permissions granted',
+        reassign: () => this.setState({ modal: rk, pick: null, mq: '' })
+      })),
+      groups,
+      dirty: dirtyCount > 0,
+      dirtyText: dirtyCount + (dirtyCount === 1 ? ' unsaved change' : ' unsaved changes'),
+      discard: () => this.setState({ perms: saved }),
+      save: () => this.setState({ saved: perms, perms, toast: 'Permissions updated for ' + dirtyCount + (dirtyCount === 1 ? ' setting' : ' settings') + '. The change is recorded in the audit log.' }),
+      hasToast: !!s.toast, toast: s.toast || '',
+      closeToast: () => this.setState({ toast: '' }),
+      modalOpen: !!modalRole,
+      mTitle: modalRole ? titles[modalRole] : '',
+      mCurrent: modalRole ? holders[modalRole].name : '',
+      mq: s.mq || '', onMq: (e) => this.setState({ mq: e.target.value }),
+      candidates, noCandidates: candidates.length === 0,
+      noPick: !s.pick,
+      closeModal: () => this.setState({ modal: null, pick: null }),
+      confirm: () => {
+        const m = this.pool().find((x) => x[1] === s.pick);
+        if (!m || !modalRole) return;
+        const next = Object.assign({}, holders);
+        next[modalRole] = { name: m[0], id: m[1], dept: m[2], since: 'Oct 2026' };
+        this.setState({ holders: next, modal: null, pick: null, toast: m[0] + ' is now ' + titles[modalRole] + '. ' + holders[modalRole].name + ' has returned to member access.' });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
