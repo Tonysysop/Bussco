@@ -22,7 +22,7 @@ import {
   AdminLayout,
   AdminSessionStatus,
   safeAdminPath,
-} from "@/components/admin-layout"
+} from "@/features/admin/admin-layout"
 import {
   adminMeQuery,
   apiErrorCode,

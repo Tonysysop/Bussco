@@ -3,7 +3,7 @@ import { Menu } from "@base-ui/react/menu"
 import { useQuery } from "@tanstack/react-query"
 import { CircleCheck, EllipsisVertical, UserPlus, X } from "lucide-react"
 
-import { AdminBanner } from "@/components/admin-layout"
+import { AdminBanner } from "@/features/admin/admin-layout"
 import {
   AdminDialog,
   BX_BTN,
@@ -13,7 +13,7 @@ import {
   ROLE_LABELS,
   SuperAdminShell,
   initials,
-} from "@/components/admin-shell"
+} from "@/features/admin/admin-shell"
 import {
   ApiError,
   administratorsQuery,

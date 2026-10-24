@@ -47,7 +47,7 @@ Signed-in state comes only from `meQuery` (`GET /api/v1/auth/me`; a 401 resolves
 
 Separate from member auth everywhere: its own cookie (`bussco_admin`, set by Rails), its own query
 (`adminMeQuery`, key `["admin","me"]`, `GET /api/v1/admin/auth/me`, a 401 resolves to `null`) and its
-own pages (`src/pages/admin-*`, shell in `src/components/admin-layout.tsx`). Admin code never reads
+own folder (`src/features/admin/`: pages, their tests, and the shell in `admin-layout.tsx`). Admin code never reads
 `meQuery`, so a member session never counts as an admin one. The role shown comes from Rails and is
 display only; Rails authorizes every admin request, and the route guard is a convenience.
 
@@ -67,8 +67,8 @@ display only; Rails authorizes every admin request, and the route guard is a con
 - **Sign out:** `DELETE /api/v1/admin/auth/session`, then `forgetAdminSession` (drops every `["admin"]`
   query). Member state is untouched; Rails keeps the two sessions apart.
 - **Super Admin workspace (A1.4):** `/admin` (Overview), `/admin/roles` and `/admin/audit`, in
-  `src/components/admin-shell.tsx` (sidebar, collapsed state in `localStorage` `bussco.sidebarCollapsed`,
-  account menu, `AdminDialog`) and `src/pages/admin-{overview,roles,audit}-page.tsx`. `RequireSuperAdmin`
+  `src/features/admin/admin-shell.tsx` (sidebar, collapsed state in `localStorage` `bussco.sidebarCollapsed`,
+  account menu, `AdminDialog`) and `src/features/admin/admin-{overview,roles,audit}-page.tsx`. `RequireSuperAdmin`
   sends other admins to `/admin`, where President and Treasurer keep the signed-in placeholder. Queries live
   under `["admin"]`; a 401 re-asks `adminMeQuery`, so the guard returns to sign-in as expired. Members and
   Reports are shown disabled; the design's financial panels and permission matrix are not built. Design:

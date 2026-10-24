@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { focusManager } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { safeAdminPath } from "@/components/admin-layout"
+import { safeAdminPath } from "@/features/admin/admin-layout"
 import { callsTo, csrfHeader, stubFetch } from "@/test/fetch"
 import { renderRoute } from "@/test/render"
 
