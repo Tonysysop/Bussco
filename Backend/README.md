@@ -97,6 +97,24 @@ bin/ci            # runs setup, lint, security, zeitwerk, tests
 
 GitHub Actions: `../.github/workflows/backend.yml` (repo root is the parent directory).
 
+## Browser checks (Playwright against real Rails)
+
+`bin/rails test` uses `bussco_test`. Browser checks use the `e2e` environment (`config/environments/e2e.rb`):
+development behaviour on its own database `bussco_e2e`, uploads in `tmp/storage-e2e`, and mail written to
+`tmp/mails-e2e`, never sent (even with `RESEND_API_KEY` set). Run them against port 5174, never against
+the development servers on 3000/5173.
+
+```sh
+RAILS_ENV=e2e bin/rails db:prepare        # once: creates bussco_e2e
+RAILS_ENV=e2e bin/rails e2e:reset         # before a run: empties bussco_e2e, its uploads and mails
+RAILS_ENV=e2e bin/rails s -p 3100 -P tmp/pids/e2e.pid
+cd ../Frontend && API_PROXY_TARGET=http://127.0.0.1:3100 npx vite --port 5174 --strictPort
+```
+
+`e2e:reset` refuses anything but `RAILS_ENV=e2e` on a database named exactly `bussco_e2e` (so also a
+`DATABASE_URL` pointing elsewhere). Data a check needs (accounts, roles) is created on `bussco_e2e` with
+`RAILS_ENV=e2e bin/rails runner …`, never on development.
+
 ## Claude Code project settings
 
 `.claude/settings.json` holds a minimal shared config: it allows the check

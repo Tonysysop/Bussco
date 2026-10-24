@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   QueryClient,
   queryOptions,
   useMutation,
@@ -363,6 +364,57 @@ export const roleChangesQuery = queryOptions({
     ),
   retry: false,
 })
+
+// The Super Admin's read-only members directory. `stage` is derived by Rails from the application;
+// the application's employment fields are self-reported (a draft until submitted_at).
+export type MemberStage = "not_started" | "in_progress" | "awaiting_approval"
+export type MemberFilters = {
+  q: string
+  stage: MemberStage | "disabled" | ""
+  role: "member" | "president" | "treasurer" | ""
+  page: number
+}
+export type Member = {
+  id: number
+  full_name: string
+  email: string
+  email_verified: boolean
+  account_status: "active" | "disabled"
+  admin_role: AdminRole | null
+  stage: MemberStage
+  registered_at: string
+  // A passport photo is attached: GET /api/v1/admin/members/:id/photo serves it.
+  photo: boolean
+  application: {
+    sap_staff_id: string | null
+    business_unit: string | null
+    department: string | null
+    office_location: string | null
+    started_at: string
+    submitted_at: string | null
+  } | null
+}
+export type MembersPage = {
+  members: Member[]
+  counts: Record<"all" | MemberStage | "disabled", number>
+  page: number
+  per_page: number
+  total: number
+}
+
+export const membersQuery = (filters: MemberFilters) =>
+  queryOptions({
+    queryKey: [...ADMIN_KEY, "members", filters],
+    queryFn: ({ client }) => {
+      const params = new URLSearchParams({ page: String(filters.page) })
+      for (const key of ["q", "stage", "role"] as const)
+        if (filters[key]) params.set(key, filters[key])
+      return adminGet<MembersPage>(client, `/api/v1/admin/members?${params}`)
+    },
+    // Keeps the current page on screen while the next filter or page loads.
+    placeholderData: keepPreviousData,
+    retry: false,
+  })
 
 // Assigns or switches an office (Rails demotes its current holder), or revokes with null.
 export function useChangeAdminRole() {

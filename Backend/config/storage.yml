@@ -5,3 +5,8 @@ test:
 local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
+
+# Browser checks' uploads, apart from development's storage/ (emptied by e2e:reset).
+e2e:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage-e2e") %>

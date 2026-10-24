@@ -1,11 +1,11 @@
 # BUSSCO — pending items before production
 
-Everything below was found during increments F1.1–F2.6 and A1.1–A1.4 and is **not done yet**, except the
+Everything below was found during increments F1.1–F2.6 and A1.1–A1.5 and is **not done yet**, except the
 "Resolved" section at the end. Clear every **Blocker** before production and get a decision on
 every **Decision**. The others are known limits or planned work: either accept them in writing or
 schedule them.
 
-Last updated: 2026-10-24, after A1.4 (Super Admin management portal).
+Last updated: 2026-10-24, after A1.5 (Super Admin members directory).
 
 ## Blockers: infrastructure and configuration
 | # | Item | Source |
@@ -44,7 +44,7 @@ Last updated: 2026-10-24, after A1.4 (Super Admin management portal).
 | P4 | **Logout UI** (member dashboard sidebar). It **must** call `forgetSession(queryClient)` from `Frontend/src/lib/api.ts` after `DELETE /api/v1/auth/session`, so no cached user or application outlives the session | Dashboard increment |
 | P5 | **Membership approval, administrative review, member dashboard** (Rails has only `not_started` and `awaiting_approval`) | Later increments |
 | P6 | **Authenticated password change** | Planned in `Backend/docs/auth/README.md` |
-| P7 | **President and Treasurer dashboards.** `/admin` is still a placeholder (who is signed in, Sign out) for them; the Super Admin has the A1.4 workspace. The Members and Reports sidebar entries are shown disabled ("Later"). Admin API calls that get a 401 must re-ask Rails (`invalidateQueries(adminMeQuery)`, as `adminGet` in `Frontend/src/lib/api.ts` does) so the guard returns to the login page saying the session expired | Next admin increments |
+| P7 | **President and Treasurer dashboards.** `/admin` is still a placeholder (who is signed in, Sign out) for them; the Super Admin has the A1.4 workspace. The Reports sidebar entry is shown disabled ("Later"). Admin API calls that get a 401 must re-ask Rails (`invalidateQueries(adminMeQuery)`, as `adminGet` in `Frontend/src/lib/api.ts` does) so the guard returns to the login page saying the session expired | Next admin increments |
 
 ## Known limits and risks (accept or fix)
 | # | Item | Detail |
@@ -81,6 +81,7 @@ Last updated: 2026-10-24, after A1.4 (Super Admin management portal).
 ## Resolved (kept for traceability)
 | Item | Resolved in | How |
 |---|---|---|
+| Super Admin members directory | A1.5 | `/admin/members` and read-only `GET /api/v1/admin/members`: every member account (never the system Super Admin), application stage derived from existing data (no approved state yet), disabled accounts and unverified emails as separate badges, staff ID and department marked as self-reported drafts until submitted. Search, stage tabs with counts that follow the search and role filter, 25 per page with accurate totals past the end, constant query count. Approval, suspension, member creation and financial data are not built |
 | Super Admin management portal (was P8) | A1.4 | `/admin` (Overview), `/admin/roles` and `/admin/audit` for the Super Admin only (`RequireSuperAdmin`; Rails enforces `require_admin_role(:super_admin)` on every endpoint). One holder per office (validation + partial unique index); assigning an occupied office demotes the holder in the same transaction with two audit rows, and all role changes serialize on one advisory lock. Portal audit rows record the acting admin's id (`changed_by_user_id`). The Super Admin can't manage itself or the system account. Checked against Rails in Chromium: assign, swap, change, revoke, a revoked admin's open tab returning to `/admin/login?reason=expired`, a President refused (403, redirected), and no horizontal scroll at 320, 390, 768 and 1440px |
 | Review & Submission (was P3) | F2.6 | `/apply/review` shows the saved sections (photo included, memory only) with Edit links and per-section missing fields from Rails' `progress.missing`, the fee from `policy`, and the backend declaration verbatim with its draft label. Submit needs explicit acceptance, a complete application and a usable declaration. It sends `{ lock_version, declaration_accepted: true, declaration_version }`, using the version of the snapshot on screen: a background refetch never swaps the details or version, but offers "Show updated details", which resets acceptance. A `409 stale`, Rails' 422 (missing fields or a changed declaration) or a 503 reloads the application, resets acceptance and is never resubmitted automatically. A lost answer (network or 5xx) never claims success: it offers "Check application status", which refetches `/me` and the application and shows the submitted screen or the draft to submit again. Checked against Rails in Chromium at 375, 768 and 1280px (axe clean): incomplete applicant blocked, stale change detected, an account switch from another tab (CSRF 403, then `identity_mismatch`, then the new applicant's unaccepted review), a forced CSRF rejection, an aborted request with status check, then one real submission storing `draft-v1` with `awaiting_approval` |
 | Oversized contribution amounts caused a 500 | F2.5 | Rails had no upper bound on `monthly_contribution_kobo`. A value over the bigint range (e.g. 2⁶³, or a 25-digit string) passed validation and raised `ActiveModel::RangeError` on save. The model now validates `less_than: 2**63` (the column's limit, not a policy maximum) and returns `422`. Model and controller tests cover it and fail without the fix |

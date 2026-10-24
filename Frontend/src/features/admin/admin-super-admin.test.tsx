@@ -86,7 +86,11 @@ describe("Super Admin portal", () => {
       "aria-current",
       "page"
     )
-    expect(within(nav).getByRole("link", { name: /Members/ })).toHaveAttribute(
+    expect(within(nav).getByRole("link", { name: "Members" })).toHaveAttribute(
+      "href",
+      "/admin/members"
+    )
+    expect(within(nav).getByRole("link", { name: /Reports/ })).toHaveAttribute(
       "aria-disabled",
       "true"
     )

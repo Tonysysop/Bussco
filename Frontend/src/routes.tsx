@@ -5,6 +5,7 @@ import { RequireSuperAdmin } from "@/features/admin/admin-shell"
 import { AdminAuditPage } from "@/features/admin/admin-audit-page"
 import { AdminHomePage } from "@/features/admin/admin-home-page"
 import { AdminLoginPage } from "@/features/admin/admin-login-page"
+import { AdminMembersPage } from "@/features/admin/admin-members-page"
 import { AdminPasswordPage } from "@/features/admin/admin-password-page"
 import { AdminRolesPage } from "@/features/admin/admin-roles-page"
 import { ApplyPage } from "@/pages/apply-page"
@@ -36,6 +37,7 @@ export const routes: RouteObject[] = [
       {
         element: <RequireSuperAdmin />,
         children: [
+          { path: "members", element: <AdminMembersPage /> },
           { path: "roles", element: <AdminRolesPage /> },
           { path: "audit", element: <AdminAuditPage /> },
         ],
