@@ -7,7 +7,7 @@ import { Link, Navigate, Outlet } from "react-router"
 
 import emblem from "@/assets/bussco-emblem.png"
 import { useAdminSignOut } from "@/components/admin-layout"
-import { adminMeQuery, type AdminRole } from "@/lib/api"
+import { adminMeQuery, type AdminMe, type AdminRole } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 // The Super Admin workspace from the approved design (design-reference/bussco-super-admin-portal-design,
@@ -122,8 +122,9 @@ function PanelIcon({ open }: { open: boolean }) {
 const LINK =
   "flex min-h-11 items-center rounded-[10px] text-[0.875rem] font-medium text-[#374151] no-underline hover:bg-[#F3F4F6] hover:text-[#1F2937] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9E1B22]"
 
-function Sidebar({ active }: { active: NavId }) {
-  const admin = useQuery(adminMeQuery).data!.user
+// The admin comes from the shell, which checked it: on sign-out the cached admin turns null before the
+// shell's redirect, and reading it here would crash that render.
+function Sidebar({ active, admin }: { active: NavId; admin: AdminMe["user"] }) {
   const logout = useAdminSignOut()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const toggle = () => {
@@ -396,7 +397,7 @@ export function SuperAdminShell({
 
   return (
     <div className="flex min-h-svh flex-wrap bg-[#F8F9FB] font-admin text-[#1F2937]">
-      <Sidebar active={active} />
+      <Sidebar active={active} admin={admin.user} />
       <main className="flex min-w-0 flex-[999_1_560px] flex-col gap-6 px-[clamp(16px,3vw,40px)] pt-7 pb-12">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-2">
