@@ -66,12 +66,13 @@ display only; Rails authorizes every admin request, and the route guard is a con
   reach the same form as a voluntary change from `/admin`.
 - **Sign out:** `DELETE /api/v1/admin/auth/session`, then `forgetAdminSession` (drops every `["admin"]`
   query). Member state is untouched; Rails keeps the two sessions apart.
-- **Super Admin workspace (A1.4):** `/admin` (Overview), `/admin/roles` and `/admin/audit`, in
+- **Super Admin workspace (A1.4):** `/admin` (Overview), `/admin/members` (A1.5), `/admin/roles` and `/admin/audit`, in
   `src/features/admin/admin-shell.tsx` (sidebar, collapsed state in `localStorage` `bussco.sidebarCollapsed`,
-  account menu, `AdminDialog`) and `src/features/admin/admin-{overview,roles,audit}-page.tsx`. `RequireSuperAdmin`
+  account menu, `AdminDialog`) and `src/features/admin/admin-{overview,members,roles,audit}-page.tsx`. `RequireSuperAdmin`
   sends other admins to `/admin`, where President and Treasurer keep the signed-in placeholder. Queries live
-  under `["admin"]`; a 401 re-asks `adminMeQuery`, so the guard returns to sign-in as expired. Members and
-  Reports are shown disabled; the design's financial panels and permission matrix are not built. Design:
+  under `["admin"]`; a 401 re-asks `adminMeQuery`, so the guard returns to sign-in as expired. The members
+  directory is read-only (stage tabs with counts, debounced search, role filter, 25 per page, details dialog;
+  staff ID and department marked as self-reported drafts until submitted). Reports is shown disabled; the design's financial panels and permission matrix are not built. Design:
   `design-reference/bussco-super-admin-portal-design` (dashboard/*.dc.html).
 - **Design:** `design-reference/bussco-admin-login-…` (Main.dc.html, tokens.json). Newsreader and
   Instrument Sans load only from `admin-layout.tsx` and apply only inside `AdminLayout`. Four layouts

@@ -32,6 +32,9 @@ Rails.application.routes.draw do
           get :eligible, on: :collection
         end
         resources :role_changes, only: :index
+        resources :members, only: :index do
+          get :photo, on: :member
+        end
       end
 
       namespace :membership do

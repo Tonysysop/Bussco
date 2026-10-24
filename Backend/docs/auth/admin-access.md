@@ -127,6 +127,28 @@ All `require_admin_role(:super_admin)` (so also the password-changed gate, CSRF 
 - **Actor:** portal rows set `changed_by_user_id` to the acting admin (and `changed_by` to their email at the
   time); `role_changes` shows that user's name. Operator and older rows keep their `changed_by` text.
 
+## Super Admin members directory (A1.5)
+`GET /api/v1/admin/members?q=&stage=&role=&page=` (`require_admin_role(:super_admin)`), read-only:
+
+- **Lists** every `account_type: member` account (never the system Super Admin), newest registration first
+  (`created_at DESC, id DESC`), 25 per page: `{ members: [...], counts, page, per_page, total }`.
+- **Member fields:** `id, full_name, email, email_verified, account_status, admin_role, stage, registered_at,
+  photo` (a passport photo is attached), `application` (null, or `sap_staff_id, business_unit, department, office_location, started_at, submitted_at`).
+  The application's employment fields are self-reported, a draft until `submitted_at`; nothing else from
+  the application (contact, personal, next of kin, contribution) and no authentication data.
+- **Photo:** `GET /api/v1/admin/members/:id/photo` (same Super Admin check) serves the passport photo for the
+  directory avatar, `Cache-Control: private, no-store`; `404` without one, for an unknown id or the system
+  account. Originals only (≤ 2 MB, no thumbnails); the directory loads them lazily.
+- **`stage`** is derived, never stored: `not_started` (no application), `in_progress` (application, still
+  `not_started`), `awaiting_approval`. `account_status: disabled` is separate and is not a suspension;
+  there is no approved state until approval exists.
+- **Filters:** `q` (1–100 characters, name, email or application `sap_staff_id`, wildcards literal),
+  `stage` (`not_started`, `in_progress`, `awaiting_approval`, or `disabled` for accounts), `role`
+  (`member` = no role, `president`, `treasurer`), `page` (1+). Anything else: `422 invalid_param`.
+- **`counts`** (`all` and per stage, plus `disabled`) follow `q` and `role` but not `stage`; `total` is the
+  count for the current stage. A page past the end returns no members with the real `total`.
+- A fixed number of queries per page (rows, applications, photo attachments, counts), whatever it holds.
+
 ## Revocation (same transaction as the change, plus the per-request re-check)
 | Change | Effect |
 |---|---|
@@ -192,6 +214,9 @@ password, which is why **admin MFA is a production requirement**.
   parallel password changes with the same old password → one winner; expiry under parallel requests.
 - `test/tasks/admin_tasks_test.rb`: every task, the terminal and confirmation guards, refusals (an occupied
   office too), the password shown once and never logged.
+- A1.5: `test/controllers/api/v1/admin/members_controller_test.rb` (Super Admin only; system account
+  excluded; exact fields; stages; search, role filter and counts; pagination past the end; parameter
+  validation; constant query count).
 - A1.4: `test/controllers/api/v1/admin/administrators_controller_test.rb` and `role_changes_controller_test.rb`
   (Super Admin only; President/Treasurer/member/anonymous refused; CSRF/Origin; temporary password; spoofed
   roles and actors; ineligible, system and self targets; office swap with two audit rows and the holder

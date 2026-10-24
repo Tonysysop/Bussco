@@ -16,7 +16,13 @@ export default defineConfig({
     // Object form keeps the browser's Host, so Rails' Origin check sees the Vite origin.
     // The string shorthand sets changeOrigin: true and Rails rejects every POST
     // (Backend/docs/auth/browser-foundations.md §4).
-    proxy: { "/api": { target: "http://127.0.0.1:3000", changeOrigin: false } },
+    // API_PROXY_TARGET points a second Vite at the browser-check Rails (Backend/README.md "Browser checks").
+    proxy: {
+      "/api": {
+        target: process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3000",
+        changeOrigin: false,
+      },
+    },
   },
   test: {
     environment: "jsdom",

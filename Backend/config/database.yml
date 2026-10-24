@@ -18,6 +18,11 @@ test:
   <<: *default
   database: bussco_test
 
+# Browser checks only (config/environments/e2e.rb); never point it at bussco_development.
+e2e:
+  <<: *default
+  database: bussco_e2e
+
 # Production reads DATABASE_URL, which Rails merges over this entry.
 production:
   <<: *default

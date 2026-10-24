@@ -36,7 +36,7 @@ export const initials = (name: string) =>
     .toUpperCase()
 
 type NavId = "overview" | "members" | "reports" | "roles" | "audit"
-// Members and Reports belong to later increments: shown, as designed, but not yet usable.
+// Reports belongs to a later increment: shown, as designed, but not yet usable.
 const NAV: { id: NavId; label: string; to?: string; d: [string, string] }[] = [
   {
     id: "overview",
@@ -47,6 +47,7 @@ const NAV: { id: NavId; label: string; to?: string; d: [string, string] }[] = [
   {
     id: "members",
     label: "Members",
+    to: "/admin/members",
     d: [
       "M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1",
       "M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM21 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8",
@@ -438,7 +439,8 @@ export function AdminDialog({
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-[rgba(17,24,39,0.42)]" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100svh-32px)] w-[calc(100%-32px)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col gap-[18px] overflow-auto rounded-[18px] bg-white p-5 font-admin text-[#1F2937] shadow-[0_40px_80px_-24px_rgba(17,24,39,0.45)] outline-none min-[600px]:p-7">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-1.5">
+            {/* min-w-0 + overflow-wrap: a long unbroken name or email wraps instead of pushing out Close */}
+            <div className="flex min-w-0 flex-col gap-1.5 [overflow-wrap:anywhere]">
               <Dialog.Title className="m-0 font-admin-display text-[1.75rem] leading-tight font-normal tracking-[-0.01em]">
                 {title}
               </Dialog.Title>
