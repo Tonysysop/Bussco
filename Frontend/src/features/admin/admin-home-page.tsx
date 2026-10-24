@@ -9,9 +9,9 @@ import {
   AdminIntro,
   AdminLayout,
   useAdminSignOut,
-} from "@/components/admin-layout"
+} from "@/features/admin/admin-layout"
 import { adminMeQuery, apiErrorMessage, type AdminMe } from "@/lib/api"
-import { AdminOverviewPage } from "@/pages/admin-overview-page"
+import { AdminOverviewPage } from "@/features/admin/admin-overview-page"
 
 const ROLE_LABELS: Record<AdminMe["user"]["admin_role"], string> = {
   super_admin: "Super Admin",

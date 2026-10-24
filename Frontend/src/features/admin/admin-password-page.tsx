@@ -15,7 +15,7 @@ import {
   AdminIntro,
   AdminLayout,
   useAdminSignOut,
-} from "@/components/admin-layout"
+} from "@/features/admin/admin-layout"
 import { PasswordRuleHints } from "@/components/password-rule-hints"
 import {
   adminMeQuery,

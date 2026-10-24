@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown } from "lucide-react"
 
-import { AdminBanner } from "@/components/admin-layout"
+import { AdminBanner } from "@/features/admin/admin-layout"
 import {
   BX_BTN,
   BX_CARD,
@@ -10,7 +10,7 @@ import {
   ROLE_LABELS,
   SuperAdminShell,
   initials,
-} from "@/components/admin-shell"
+} from "@/features/admin/admin-shell"
 import {
   apiErrorMessage,
   roleChangesQuery,

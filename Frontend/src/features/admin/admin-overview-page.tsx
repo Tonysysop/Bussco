@@ -3,21 +3,21 @@ import { useQuery } from "@tanstack/react-query"
 import { History, ShieldCheck, UserRound, Users } from "lucide-react"
 import { Link } from "react-router"
 
-import { AdminBanner } from "@/components/admin-layout"
+import { AdminBanner } from "@/features/admin/admin-layout"
 import {
   BX_CARD,
   BX_PRIMARY,
   ROLE_LABELS,
   SuperAdminShell,
   initials,
-} from "@/components/admin-shell"
+} from "@/features/admin/admin-shell"
 import {
   administratorsQuery,
   apiErrorMessage,
   roleChangesQuery,
   type RoleChange,
 } from "@/lib/api"
-import { describeChange, formatWhen } from "@/pages/admin-audit-page"
+import { describeChange, formatWhen } from "@/features/admin/admin-audit-page"
 
 const DAY = 24 * 60 * 60 * 1000
 

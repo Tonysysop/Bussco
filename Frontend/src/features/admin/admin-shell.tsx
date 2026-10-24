@@ -6,7 +6,7 @@ import { ChevronUp, KeyRound, LogOut, X } from "lucide-react"
 import { Link, Navigate, Outlet } from "react-router"
 
 import emblem from "@/assets/bussco-emblem.png"
-import { useAdminSignOut } from "@/components/admin-layout"
+import { useAdminSignOut } from "@/features/admin/admin-layout"
 import { adminMeQuery, type AdminMe, type AdminRole } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
