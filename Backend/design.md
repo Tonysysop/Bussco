@@ -57,7 +57,8 @@ One identity store (`users`) for members, applicants and admins. These are
 | Email verification | Owns the email address (not proof of employment) | User, via verification code |
 | Account status | Active / disabled | Admin process |
 | Membership | Applicant → approved member; links unique SAP ID | Authorised membership review |
-| Admin role | Super Admin, President, Treasurer (`users.admin_role`, one per user) | Controlled provisioning only ([docs/auth/admin-access.md](docs/auth/admin-access.md)) |
+| Account type | `member` (everyone who registers) or `system` (the single Super Admin, never a member) | Fixed at creation; `system` only by operator provisioning |
+| Admin role | Super Admin (the system account only), President, Treasurer (member accounts) | Controlled provisioning only ([docs/auth/admin-access.md](docs/auth/admin-access.md)) |
 
 - Public registration: full name, email, password. No role, no SAP ID, no
   membership approval.
@@ -65,6 +66,9 @@ One identity store (`users`) for members, applicants and admins. These are
   sign in to complete/track their application.
 - Dashboard, savings and loans require approved membership.
 - Admins log in on a separate screen/endpoint against the same identity store.
+- The Super Admin is the one `system` account: it never registers, applies, holds membership, savings or
+  loans, or signs in to the member app. Future membership-gated endpoints (`require_approved_membership`)
+  must also require a `member` account.
 - Financial approval permissions are **not defined** yet; do not invent them.
 
 ## Future financial rules — documented only, not implemented

@@ -54,9 +54,13 @@ class Session < ApplicationRecord
     last_seen_at < idle_timeout.ago || created_at < absolute_lifetime.ago
   end
 
-  # Re-checked on every request, so a change that skipped the User callbacks still blocks.
+  # Re-checked on every request, so a change that skipped the User callbacks still blocks. Admin rows
+  # need a current admin whose temporary password (if any) hasn't expired; member rows need a member
+  # account, so the system identity can never act as a cooperative member.
   def usable?
-    user.active? && (!admin? || (user.admin_role? && user.email_verified_at?))
+    return false unless user.active?
+
+    admin? ? user.admin_role? && user.email_verified_at? && !user.temporary_password_expired? : user.member?
   end
 
   # One conditional UPDATE, so concurrent requests can only move last_seen_at forward, at most

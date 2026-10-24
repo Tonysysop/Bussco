@@ -5,6 +5,7 @@ class AdminRoleChange < ApplicationRecord
   belongs_to :user
 
   validates :changed_by, presence: true
+  validates :note, presence: true, if: -> { action == "recover" }
 
   def readonly? = persisted?
 end

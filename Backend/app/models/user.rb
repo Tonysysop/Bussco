@@ -8,8 +8,6 @@ class User < ApplicationRecord
   has_one :membership_application, dependent: :destroy
   # Audit rows block deletion (FK without cascade), so privilege history can't vanish with the user.
   has_many :admin_role_changes
-  # Runs first: a change that would remove the last active Super Admin aborts before anything is revoked.
-  before_update :keep_an_active_super_admin
   # Disabling revokes every login in the same transaction; each request also re-checks status.
   before_update { sessions.delete_all if will_save_change_to_account_status?(to: "disabled") }
   # Any role change (grant, switch, revoke) ends admin sessions; the next admin login reads the new role.
@@ -25,6 +23,10 @@ class User < ApplicationRecord
   # Set only by change_admin_role! (docs/auth/admin-access.md); no request param ever reaches it.
   enum :admin_role, { super_admin: "super_admin", president: "president", treasurer: "treasurer" },
     validate: { allow_nil: true }
+  # The one `system` user is the Super Admin: never a member, created only by provision_super_admin!
+  # (docs/auth/admin-access.md). Fixed at creation; scopes off because User.system would shadow Kernel#system.
+  enum :account_type, { member: "member", system: "system" }, scopes: false
+  attr_readonly :account_type
 
   validates :full_name, presence: true, length: { maximum: 120 }
   validates :email, presence: true, length: { maximum: 254 },
@@ -32,19 +34,19 @@ class User < ApplicationRecord
   # Presence and the 72-byte limit come from has_secure_password; passwords are never trimmed.
   validates :password, length: { minimum: 12 }, allow_nil: true
   # has_secure_password ignores "", which would otherwise pass as a reset that changes nothing.
-  validates :password, length: { minimum: 12 }, on: :password_reset
+  validates :password, length: { minimum: 12 }, on: %i[password_reset password_change]
   validates :sap_id, uniqueness: true, allow_nil: true
   validates :email_verified_at, presence: true, if: :admin_role?
   validate :admin_role_changed_through_change_admin_role, on: :update, if: :will_save_change_to_admin_role?
   validate :admin_role_needs_active_account, if: -> { admin_role? && will_save_change_to_admin_role? }
+  validate :super_admin_is_the_system_account
 
   EMAIL_CODE_TTL = 10.minutes
   EMAIL_CODE_MAX_ATTEMPTS = 5
   EMAIL_RESEND_COOLDOWN = 60.seconds
   ProvisioningError = Class.new(StandardError)
-  # Serialises every Super Admin change, bootstrap included, so concurrent changes can't each
-  # count the other as the remaining active Super Admin.
-  SUPER_ADMIN_LOCK = 4_242_001
+  # A temporary password (provisioning, recovery) works only this long, and only to set a new one.
+  TEMPORARY_PASSWORD_TTL = 72.hours
 
   # Password reset codes follow the same TTL, attempt and cooldown rules, on their own columns.
   PASSWORD_RESET_AUTHORIZATION_TTL = 10.minutes
@@ -102,7 +104,8 @@ class User < ApplicationRecord
   # current code and any reset authorization. Disabled accounts get nothing.
   def request_password_reset
     with_lock do
-      next if !active? || password_reset_requested_at&.after?(EMAIL_RESEND_COOLDOWN.ago)
+      # The system account recovers only through the audited operator task (recover_super_admin!).
+      next if !active? || system? || password_reset_requested_at&.after?(EMAIL_RESEND_COOLDOWN.ago)
 
       update!(password_reset_requested_at: Time.current, password_reset_generation: password_reset_generation + 1,
         password_reset_code_digest: nil, password_reset_code_issued_at: nil, password_reset_attempts: 0)
@@ -118,7 +121,8 @@ class User < ApplicationRecord
   # Called inside the delivery job, like issue_email_verification_code.
   def issue_password_reset_code(generation)
     code = format("%06d", SecureRandom.random_number(1_000_000))
-    issued = User.where(id:, account_status: "active", password_reset_generation: generation, password_reset_code_digest: nil)
+    issued = User.where(id:, account_status: "active", account_type: "member", password_reset_generation: generation,
+      password_reset_code_digest: nil)
       .update_all(password_reset_code_digest: password_reset_code_digest_for(code), password_reset_code_issued_at: Time.current)
     code if issued == 1
   end
@@ -126,7 +130,7 @@ class User < ApplicationRecord
   # Returns a reset authorization token, or nil. The code is single-use; nobody is signed in.
   def verify_password_reset_code(code)
     with_lock do
-      next unless active? && password_reset_code_digest && password_reset_code_issued_at.after?(EMAIL_CODE_TTL.ago) &&
+      next unless active? && member? && password_reset_code_digest && password_reset_code_issued_at.after?(EMAIL_CODE_TTL.ago) &&
         password_reset_attempts < EMAIL_CODE_MAX_ATTEMPTS
 
       if ActiveSupport::SecurityUtils.secure_compare(password_reset_code_digest, password_reset_code_digest_for(code))
@@ -148,7 +152,7 @@ class User < ApplicationRecord
 
     transaction do
       user = lock.find_by_token_for(:password_reset, token)
-      next unless user&.active?
+      next unless user&.active? && user.member?
 
       user.assign_attributes(password:, password_reset_generation: user.password_reset_generation + 1,
         password_reset_code_digest: nil, password_reset_code_issued_at: nil, password_reset_attempts: 0)
@@ -164,14 +168,14 @@ class User < ApplicationRecord
     with_lock { yield if password_digest == digest }
   end
 
-  # The only supported way to change a persisted admin role: sets it (nil revokes) and records it.
-  # Lock order for every role change: the Super Admin advisory lock, then user rows. The row lock is
-  # the one admin login takes, so a login can't add a session after a revoke commits. Returns false
-  # when nothing changes; raises, leaving nothing changed, when a validation or guard rejects it.
+  # The only supported way to change a persisted admin role (President, Treasurer): sets it (nil revokes)
+  # and records it, under the row lock admin login also takes, so a login can't add a session after a
+  # revoke commits. Returns false when nothing changes; raises, leaving nothing changed, when rejected.
+  # super_admin is never granted or removed here: it belongs to the system account alone.
   def change_admin_role!(role, by:, action:)
-    transaction do
-      User.lock_super_admins
-      lock!
+    with_lock do
+      raise ProvisioningError, "super_admin belongs only to the system account" if role.to_s == "super_admin" || super_admin?
+
       previous_role = admin_role
       next false if previous_role == role&.to_s
 
@@ -184,36 +188,74 @@ class User < ApplicationRecord
     @audited_role_change = false
   end
 
-  # First-time provisioning only: refused once anyone has ever been a Super Admin, even one now
-  # disabled or revoked. Recovery after that is replace_super_admin!.
-  def self.bootstrap_super_admin!(user, by:)
-    transaction do
-      lock_super_admins
-      if super_admin.exists? || AdminRoleChange.where(new_role: "super_admin").exists?
-        raise ProvisioningError, "a Super Admin was already provisioned; use admin:replace_super_admin"
+  def temporary_password_expired?
+    temporary_password_expires_at&.past? || false
+  end
+
+  # Changes this user's own password. The current password is checked again under the row lock, so of
+  # parallel changes made with the same old password only the first succeeds. Success ends every
+  # session (the old password's too) in the same transaction, then yields so the caller can start the
+  # replacement session there. Returns nil for a wrong current password, else self (errors if rejected).
+  def change_password(current_password, new_password)
+    with_lock do
+      next unless current_password && authenticate(current_password)
+
+      if new_password && authenticate(new_password)
+        errors.add(:password, "must be different from the current password")
+        next self
       end
+      assign_attributes(password: new_password, must_change_password: false, temporary_password_expires_at: nil)
+      next self unless save(context: :password_change)
 
-      user.change_admin_role!(:super_admin, by:, action: :bootstrap)
+      sessions.delete_all
+      yield if block_given?
+      self
     end
   end
 
-  # Emergency recovery: `to` becomes a Super Admin and then `from` (active, disabled or unreachable)
-  # loses the role, in one transaction, so an active Super Admin exists at every step.
-  def self.replace_super_admin!(from, to, by:)
-    transaction do
-      lock_super_admins
-      [ from, to ].sort_by(&:id).each(&:lock!) # rows in id order, after the advisory lock
-      raise ProvisioningError, "#{from.email} is not a Super Admin" unless from.super_admin?
-      raise ProvisioningError, "#{to.email} already has an admin role" if to.admin_role?
+  def self.system_account = find_by(account_type: "system")
 
-      to.change_admin_role!(:super_admin, by:, action: :emergency_replace)
-      from.change_admin_role!(nil, by:, action: :emergency_replace)
+  # Creates the one system identity with a generated temporary password; returns [user, password]. The
+  # password is never stored (only its digest) or logged; the operator hands it over. Refused once a
+  # system account exists in any state (the unique index settles parallel runs): recovery reissues it.
+  def self.provision_super_admin!(email:, full_name:, by:)
+    password = temporary_password
+    user = transaction do
+      raise ProvisioningError, "the Super Admin is already provisioned; use admin:recover_super_admin" if system_account
+
+      user = create!(email:, full_name:, password:, account_type: "system", admin_role: "super_admin",
+        email_verified_at: Time.current, must_change_password: true, temporary_password_expires_at: TEMPORARY_PASSWORD_TTL.from_now)
+      user.admin_role_changes.create!(new_role: "super_admin", action: "provision", changed_by: by)
+      user
     end
+    [ user, password ]
+  rescue ActiveRecord::RecordNotUnique
+    raise ProvisioningError, "the Super Admin is already provisioned, or the email belongs to another account"
   end
 
-  def self.lock_super_admins
-    connection.execute("SELECT pg_advisory_xact_lock(#{SUPER_ADMIN_LOCK})")
+  # Emergency recovery of the same system identity (never a new one): a new temporary password, a forced
+  # change, re-enabled, every session ended, optionally re-pointed at a newly designated person. Audited
+  # with the reason and any email change. Returns [user, password].
+  def self.recover_super_admin!(by:, reason:, email: nil, full_name: nil)
+    password = temporary_password
+    user = transaction do
+      user = system_account&.lock! or raise ProvisioningError, "no Super Admin is provisioned yet; use admin:provision_super_admin"
+
+      user.assign_attributes(password:, must_change_password: true, account_status: "active",
+        temporary_password_expires_at: TEMPORARY_PASSWORD_TTL.from_now)
+      user.assign_attributes(email:, email_verified_at: Time.current) if email.present?
+      user.full_name = full_name if full_name.present?
+      note = [ reason, ("email #{user.email_in_database} → #{user.email}" if user.will_save_change_to_email?) ].compact.join("; ")
+      user.save!
+      user.sessions.delete_all
+      user.admin_role_changes.create!(previous_role: "super_admin", new_role: "super_admin", action: "recover", changed_by: by, note:)
+      user
+    end
+    [ user, password ]
   end
+
+  # 24 alphanumerics: about 143 bits, well inside bcrypt's 72 bytes.
+  def self.temporary_password = SecureRandom.alphanumeric(24)
 
   private
 
@@ -227,16 +269,10 @@ class User < ApplicationRecord
     errors.add(:account_status, "must be active to hold an admin role") unless active?
   end
 
-  # Losing the role or being disabled both remove an active Super Admin.
-  def keep_an_active_super_admin
-    return unless admin_role_in_database == "super_admin" && account_status_in_database == "active"
-    return if super_admin? && active?
-
-    User.lock_super_admins
-    return if User.super_admin.active.where.not(id:).exists?
-
-    errors.add(:base, "the last active Super Admin can't be revoked or disabled")
-    throw :abort
+  # Mirrors users_super_admin_is_system and users_system_not_member with readable errors.
+  def super_admin_is_the_system_account
+    errors.add(:admin_role, "super_admin belongs only to the system account") if super_admin? != system?
+    errors.add(:base, "the system account can't be a member") if system? && (!not_started? || sap_id)
   end
 
   def password_reset_code_digest_for(code)

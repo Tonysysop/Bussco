@@ -24,6 +24,7 @@ Rails.application.routes.draw do
       namespace :admin do
         namespace :auth do
           resource :session, only: [ :create, :destroy ]
+          resource :password, only: :update
           get "me", to: "sessions#show"
         end
       end

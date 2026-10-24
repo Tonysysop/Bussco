@@ -11,6 +11,9 @@
   /* BUSSCO design tokens: design-reference/stitch/SIGNUP-DESIGN.md and Signup.png */
   --font-sans: "Source Sans 3 Variable", sans-serif;
   --font-heading: "Public Sans Variable", sans-serif;
+  /* Admin portal only (design-reference admin login tokens.json); the faces load in admin-layout.tsx. */
+  --font-admin: "Instrument Sans Variable", system-ui, sans-serif;
+  --font-admin-display: "Newsreader Variable", Georgia, serif;
   --color-brand-panel: #8c181e;
   --color-brand-yellow: #fcd400;
   /* Raised primary button: top-edge highlight, darker bottom edge, contact shadow, burgundy ambient shadow. */

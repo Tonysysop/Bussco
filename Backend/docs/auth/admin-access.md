@@ -1,201 +1,176 @@
-# Increment 6 (A1.1) — Admin authentication and controlled role provisioning
+# Increments 6 (A1.1) and A1.3 — Admin authentication, the system Super Admin, controlled provisioning
 
-Status: **implemented** (backend only). There is no admin frontend screen, no role-management API,
-and no approval permissions yet.
+Status: **implemented** (backend, plus the admin login and password screens in A1.2). There is no Super
+Admin management portal or API yet, and no approval permissions.
 
 ## Scope
-- Three admin roles: **Super Admin**, **President**, **Treasurer** (`users.admin_role`).
-- Admin login, current admin and logout on their own cookie (`bussco_admin`), using the shared
-  `users` identity store and `sessions` table.
-- Operator-run provisioning (rake): a one-time Super Admin bootstrap, interim President/Treasurer
-  grant and revoke, and an emergency Super Admin replacement. Every change is audited.
-- An authorization foundation for later admin endpoints: deny by default, plus `require_admin_role`.
+- Three admin roles in `users.admin_role`: **Super Admin**, **President**, **Treasurer**.
+- **The Super Admin is the single system identity** (`users.account_type = 'system'`): a system administrator,
+  not a cooperative member. It is created only by an operator task, with a generated temporary password that
+  must be changed at first sign-in. President and Treasurer are ordinary **member** accounts holding a role.
+- Admin login, current admin, logout and password change on their own cookie (`bussco_admin`), using the
+  shared `users` identity store and `sessions` table.
+- An authorization foundation for later admin endpoints: deny by default, a restricted first-login session,
+  and `require_admin_role`.
 
 ## Exclusions
-- Public admin signup, and any role chosen by the client.
-- The Super Admin management portal and its API (assign, revoke or switch roles; list admins and
-  audit history). This is the next admin increment. Routine President/Treasurer changes move there
-  from the interim rake tasks.
-- Membership approval and financial approval permissions (A2). No role, Super Admin included, has
-  any approval authority or can bypass cooperative financial policy.
-- Admin MFA: a production blocker in `PRE-PRODUCTION.md`, not built here.
-- An admin frontend.
+- Public admin signup, and any role or account type chosen by the client.
+- The Super Admin management portal and its API (assign, revoke or switch President/Treasurer; list admins
+  and audit history). Until then the interim `admin:grant` / `admin:revoke` tasks manage those roles. The
+  portal can never create, promote or duplicate a Super Admin.
+- Membership and financial approval permissions (A2). No role, Super Admin included, has approval authority
+  or can bypass cooperative financial policy.
+- Admin MFA: a production blocker in `PRE-PRODUCTION.md` (B7).
 
-## Design decisions
-- **Identity: an `admin_role` column on `users`, not an `AdminUser` model or an `admin_roles`
-  table.** A separate model would duplicate password, verification, reset, disabling and session
-  handling, and `design.md` keeps one identity store. Each user has at most one role. Adding a role
-  means one enum value plus one constraint value. No RBAC framework.
-- **Sessions: same table, separate cookie, flagged rows.** `sessions.admin` marks admin rows.
-  `Session.resume/revoke/start` take `admin:` and match `token_digest` and `admin` together.
-  `Api::V1::BaseController` keeps a single set of helpers, which use two hooks (`auth_cookie`,
-  `admin_session?`); `Api::V1::Admin::BaseController` overrides both. The member code path is
-  unchanged.
+## Identity model
+| | Super Admin | President / Treasurer |
+|---|---|---|
+| `account_type` | `system` (exactly one may exist) | `member` |
+| How created | `admin:provision_super_admin` (operator) | public registration + email verification |
+| First password | generated temporary password, must be changed | chosen by the person |
+| Member login, application, membership, savings, loans | **never** | yes (unchanged) |
+| Public password reset | **never** (operator recovery only) | yes |
+| Admin login | yes | yes |
 
-| Question | Answer |
-|---|---|
-| Does admin login end a member session in the same browser? | No. They use separate cookies and rows. Admin login does rotate the shared Rails CSRF session (`rotate_browser_session`), so an open member tab gets one `403` and then fetches a new token (R3). |
-| Does member login end an admin session? | No, for the same reason. Each login revokes only the previous session *of its own kind* in that browser. |
-| How is admin state isolated? | By a distinct cookie name, the `sessions.admin` flag and a lookup scoped by kind. Admin endpoints never read `bussco_auth`, and member endpoints never read `bussco_admin`. A token presented in the other cookie resolves to nothing and is left untouched. |
-| Are different cookie scopes needed? | No. Both cookies are host-only, `SameSite=Strict` and HttpOnly. A `path=/api/v1/admin` scope would add nothing (scripts can't read either cookie) and would complicate deletion. |
-| How do privilege changes take effect? | See "Revocation". In short: in the same transaction, plus a re-check on every request. |
+Why the `users` table and not an `AdminUser` model: one place for password hashing, verification, sessions,
+disabling and the audit FK. An `account_type` column plus database constraints keep the system identity out
+of member workflows without a second identity store.
+
+### Database constraints (`users`)
+- `users_account_type_allowed`: `member` or `system`. `account_type` is read-only after creation (`attr_readonly`).
+- `users_super_admin_is_system`: `(admin_role IS NOT DISTINCT FROM 'super_admin') = (account_type = 'system')`.
+  A member can never hold `super_admin` (no promotion, no self-promotion), and the system account can't lose
+  it or hold another role.
+- `users_one_system_identity`: unique partial index on `account_type WHERE account_type = 'system'`. At most
+  one system identity, **active or disabled**. Zero means unprovisioned; one means configured.
+- `users_system_not_member`: the system account has `membership_status = 'not_started'` and no SAP ID.
+- `users_admin_role_allowed`, `users_admin_email_verified` (A1.1): known roles only; an admin has a verified email.
+- Not in SQL (would need a trigger): no membership application for the system account. Enforced by
+  `MembershipApplication` (create validation) and by the system account never holding a member session.
 
 ## Endpoint contract
-All unsafe requests need an allowed `Origin` and `X-CSRF-Token` (increment 0); otherwise the
-response is `403 { "error": "invalid_csrf_token" }` and no row is written. Malformed JSON gets
-`400 { "error": "bad_request" }`.
+All unsafe requests need an allowed `Origin` and `X-CSRF-Token` (increment 0); otherwise
+`403 { "error": "invalid_csrf_token" }`. Malformed JSON gets `400 { "error": "bad_request" }`.
 
 `POST /api/v1/admin/auth/session` with body `{ "email": "…", "password": "…" }`
-- `201` → `{ "user": { id, full_name, email, admin_role }, "csrf_token": "…" }`, plus
+- `201` → `{ "user": { id, full_name, email, admin_role, must_change_password }, "csrf_token": "…" }`, plus
   `Set-Cookie: bussco_admin=…; HttpOnly; SameSite=Strict[; Secure]` and a rotated `_bussco_session`.
-- `401 { "error": "invalid_credentials" }`: one answer for an unknown email, a wrong password, a
-  disabled account, an account with no admin role, or a blank or non-string password.
-  (An unverified admin can't exist; see the constraints below.)
-- `429 { "error": "rate_limited" }` + `Retry-After: 900`: 20 per IP, or 10 per submitted email,
-  per 15 minutes. These counters are separate from member login.
+- `401 { "error": "invalid_credentials" }`: one answer for an unknown email, a wrong password, a disabled
+  account, a non-admin, an **expired temporary password**, or a blank or non-string password.
+- `429 { "error": "rate_limited" }` + `Retry-After: 900`: 20 per IP, or 10 per submitted email, per 15 minutes.
 
-`GET /api/v1/admin/auth/me`
-- `200 { "user": { id, full_name, email, admin_role } }`.
-- `401 { "error": "unauthenticated" }` when there is no admin session, after logout, after
-  expiry, after a role or status change, or when only a member session exists. (The earlier draft's
-  `403` case can't occur: a member never holds an admin session.)
+`GET /api/v1/admin/auth/me` → `200 { "user": { …same five fields } }` · `401 { "error": "unauthenticated" }`.
 
-`DELETE /api/v1/admin/auth/session`
-- `200 { "csrf_token": "…" }`, whether signed in or not. It deletes the row, clears
-  `bussco_admin` and rotates the Rails session.
+`DELETE /api/v1/admin/auth/session` → `200 { "csrf_token": "…" }`, signed in or not.
+
+`PATCH /api/v1/admin/auth/password` with body `{ "current_password": "…", "password": "…" }` (any admin)
+- `200 { "user": { … must_change_password: false }, "csrf_token": "…" }` with a new `bussco_admin`.
+- `422 { "error": "invalid_current_password" }` · `422 { "errors": { "password": […] } }` (12+ characters,
+  72 bytes at most, different from the current one) · `401` without an admin session · `429` after 10 per
+  15 minutes per user.
 
 Responses never contain `password_digest`, tokens, codes or any internal column.
 
-## Business rules
-- `admin_role ∈ { super_admin, president, treasurer }` or NULL. This is enforced by a model enum and
-  the DB check `users_admin_role_allowed`.
-- An admin has a verified email (DB check `users_admin_email_verified`, plus a validation) and an
-  active account when the role is granted.
-- **Only `User#change_admin_role!` changes a persisted role.** A validation rejects every other
-  update of `admin_role`: enum shortcuts (`user.treasurer!`), `update(admin_role:)` and `save`. So
-  no supported model operation can skip the audit. Creating a user with a role (test fixtures only)
-  is not audited; no application path does it, since registration never permits `admin_role`.
-- Roles are never read from request params or headers. They are re-read from the database on every
-  admin request.
-- Admin sessions have a **15-minute idle timeout and an 8-hour absolute lifetime**
-  (`Session::ADMIN_IDLE_TIMEOUT`, `ADMIN_ABSOLUTE_LIFETIME`). Member sessions keep 30 minutes and
-  12 hours.
+## First sign-in and the restricted session
+- A temporary password (provisioning or recovery) is valid for **72 hours**
+  (`User::TEMPORARY_PASSWORD_TTL`, `temporary_password_expires_at`) and sets `must_change_password`.
+- Signing in with it creates a normal admin session, but **`Admin::BaseController#require_password_changed`
+  answers `403 { "error": "password_change_required" }` on every admin endpoint**, including every future
+  controller that inherits it. Only `GET /me`, `DELETE /session` and `PATCH /password` skip it, by name.
+- After expiry the temporary password no longer signs in, and an existing session stops working
+  (`Session#usable?`). The operator recovers.
+- **The password change** (`User#change_password`): under the user's row lock it re-checks the current
+  password against the locked row, saves the new one (clearing `must_change_password` and the expiry), deletes
+  **every** session of the user, then starts the replacement admin session and rotates the CSRF session, all
+  in one transaction. Of parallel changes made with the same old password only the first succeeds; the others
+  get `422` (threaded test). The temporary password and every old cookie stop working at once.
 
-### Authorization foundation
-- `Api::V1::Admin::BaseController` runs `before_action :require_authentication` (deny by default)
-  and provides `current_admin`. A controller must skip the check by name to allow anonymous access;
-  only login and logout do.
-- `require_admin_role(*roles)` returns `403 { "error": "forbidden" }` unless the stored role is
-  listed. Signing in authorizes nothing privileged by itself.
-- **Rules for the future portal (not built):**
-  - Every role-management endpoint uses `before_action -> { require_admin_role(:super_admin) }`.
-  - An actor may never change their own role.
-  - President and Treasurer get no role-management access.
-  - Its tests must cover: President and Treasurer get `403`; a member and anonymous get `401`;
-    self-change is refused; the last-Super-Admin guard surfaces as `422`; audit rows record the
-    acting Super Admin.
+## Sessions and isolation
+Same as A1.1: `sessions.admin` flags admin rows, `Session.start/resume/revoke` take `admin:`, admin endpoints
+read only `bussco_admin`, member endpoints only `bussco_auth`. Admin rows: 15-minute idle, 8-hour absolute.
 
-### Super Admin safety
-- **The last active Super Admin is always kept.** A `before_update` guard aborts any change that
-  would leave no other active Super Admin. That covers a revoke, a role switch and disabling the
-  account. Deletion is blocked by the audit table's foreign key (no cascade).
-- **Lock order, everywhere:** transaction → Postgres advisory lock (`User::SUPER_ADMIN_LOCK`) →
-  user row locks (in id order when there are two) → update and audit row. `change_admin_role!`,
-  bootstrap and replace all take the advisory lock first. Disabling takes it in the guard, before
-  the UPDATE locks the row. Admin login takes only the row lock. This removed a deadlock between a
-  direct role change and an emergency replacement, which has a regression test.
-- Concurrent changes therefore can't each count the other as "the remaining Super Admin".
+| Question | Answer |
+|---|---|
+| Does admin login end a member session in the same browser? | No (separate cookies and rows). Both logins rotate the shared Rails CSRF session, so another open tab gets one `403` and fetches a new token (R3, R12). |
+| How is admin state isolated? | Distinct cookie, `sessions.admin`, lookup scoped by kind. A token in the other cookie resolves to nothing. |
+| Can the Super Admin act as a member? | No. Member login answers the generic 401 for the system account, and `Session.resume(admin: false)` rejects a member row for it even if one were forged. |
 
-### Revocation (all in the same transaction as the change, plus a per-request re-check)
+`Session#usable?` re-checks on every request: the account is active; admin rows need an admin role, a
+verified email and an unexpired temporary password (if any); member rows need a member account.
+
+## Authorization foundation
+- `Api::V1::Admin::BaseController`: `require_authentication` (deny by default), then `require_password_changed`;
+  `current_admin`; `require_admin_role(*roles)` → `403 { "error": "forbidden" }` unless the stored role is listed.
+- **Rules for the future portal (not built):** role management only behind `require_admin_role(:super_admin)`;
+  never the actor's own role; President and Treasurer get no role management; `super_admin` is never
+  grantable (the database refuses it anyway). Its tests must cover 403 for President/Treasurer, 401 for a
+  member and anonymous, refused self-change, and audit rows recording the acting Super Admin.
+
+## Revocation (same transaction as the change, plus the per-request re-check)
 | Change | Effect |
 |---|---|
-| Role granted, switched or revoked (`change_admin_role!`) | The user's admin sessions are deleted; member sessions are kept |
-| Account disabled | All of the user's sessions are deleted (existing rule) |
-| Password reset | All of the user's sessions are deleted, admin ones included |
-| Changes that skip callbacks (`update_columns`, SQL) | `Session.resume(admin: true)` re-checks `active?`, `admin_role?` and `email_verified_at?` on every request, so the next request gets `401` and the row is deleted |
+| President/Treasurer role granted, switched or revoked (`change_admin_role!`) | The user's admin sessions are deleted; member sessions kept |
+| Account disabled | All of the user's sessions deleted |
+| Password changed (`PATCH /password`) or member password reset | All sessions deleted (a new admin session starts for the change) |
+| Super Admin recovery | All sessions deleted, new temporary password |
+| Changes that skip callbacks (`update_columns`, SQL) | `Session#usable?` fails on the next request: `401`, row deleted |
 
-**Revoke vs. concurrent login:** admin login authenticates, then re-reads the user under its row
-lock (`with_password_unchanged`) and creates the session only if the user is still active and still
-an admin. `change_admin_role!` takes the same row lock. If the revoke commits first, the login
-returns 401. If the login commits first, the revoke deletes the new row. A threaded test covers
-this.
-
-**Expiry under concurrency:** `touch_last_seen` is one conditional UPDATE inside the row's own idle
-window, so it can't revive a row that has gone idle (16 minutes is live for a member but expired
-for an admin). `created_at` is never written, so the 8-hour limit can't be extended. A threaded test
-covers parallel touches and resumes.
+**Revoke vs. concurrent login:** admin login re-reads the user under its row lock (`with_password_unchanged`)
+and creates the session only if the user is still active, still an admin and the temporary password (if any)
+is unexpired. `change_admin_role!` takes the same row lock (threaded test).
 
 ## Audit: `admin_role_changes`
-Columns:
-- `user_id`: FK without cascade;
-- `previous_role` and `new_role`: nullable, both checked against the known roles, and they must
-  differ;
-- `action`: `bootstrap`, `grant`, `revoke` or `emergency_replace`;
-- `changed_by`: the operator name, not blank;
-- `created_at`.
+`user_id` (FK, no cascade), `previous_role`, `new_role`, `action`, `changed_by` (operator, not blank),
+`note`, `created_at`. Actions: `provision`, `recover`, `grant`, `revoke` (plus `bootstrap` and
+`emergency_replace`, kept only so A1.1 rows stay valid). `previous_role ≠ new_role` except for `recover`
+(credentials reissued, role unchanged), which also needs a non-blank `note`. Each row is written in the same
+transaction as the change.
 
-Each row is written in the same transaction as the role update, so both commit or neither does.
+**Append-only through the application:** `AdminRoleChange#readonly?` once saved; a validation rejects any role
+change except `change_admin_role!` (enum shortcuts, plain updates). **Not tamper-proof:** privileged database
+access (SQL, `update_columns`, a console) can still change roles or audit rows (`PRE-PRODUCTION.md` R11).
 
-**Append-only through the application:** `AdminRoleChange#readonly?` is true once a row is saved,
-so `update` and `destroy` raise, and no code edits or deletes audit rows. **This is not tamper-proof.**
-Privileged database access (SQL, `delete_all`, `update_columns`, a Rails console) can still change
-or remove rows, and can change `users.admin_role` without an audit row. Tamper resistance would need
-restricted DB grants or off-box log shipping (PRE-PRODUCTION). No audit framework or triggers were
-added.
+### A1.3 migration (`20261024090000_super_admin_system_identity`)
+A1.1 let a member account hold `super_admin`. Before adding the constraints, the migration removes **only that
+role** from such accounts, deletes **only their admin sessions**, and writes a `revoke` audit row
+(`changed_by: "A1.3 policy migration"`). The member, their member sessions, membership data and every earlier
+audit row are kept. The system then counts as unprovisioned. Tested with legacy data and with none.
 
-## Provisioning runbook (operators only)
-No password ever passes through a task. Every admin first **registers through the normal public
-signup and verifies their email**, choosing their own password. The tasks only attach a role to an
-existing account. `OPERATOR` is required and is recorded as `changed_by`. An email address is not a
-credential, so having it in shell history is acceptable. The confirmation is retyped on stdin, so it
-never enters history.
+## Provisioning runbook (operators only; never seeds)
+The temporary password is generated by the task (24 alphanumerics, about 143 bits), stored only as a bcrypt
+digest, never logged, emailed or typed, and **shown once on the operator's terminal**. Both tasks refuse to run
+when stdout isn't a terminal (CI, a file, a pipe). The confirmation is the email retyped on stdin, so it stays
+out of shell history. Hand the password over in person or by phone.
 
-| Task | When | Guards |
+| Task | When | Effect |
 |---|---|---|
-| `bin/rails admin:bootstrap EMAIL=… OPERATOR=…` | **Once**: the first Super Admin | Retype the email to confirm. Refused if *anyone has ever been provisioned* as a Super Admin: any `super_admin` user in any status, or any audit row with `new_role = super_admin`, checked under the advisory lock. After that, recovery uses the emergency task. |
-| `bin/rails admin:grant EMAIL=… ROLE=president\|treasurer OPERATOR=…` | Interim, until the portal | Refuses `super_admin` and refuses to touch a Super Admin. Idempotent: an unchanged role is a no-op with no audit row. |
-| `bin/rails admin:revoke EMAIL=… OPERATOR=…` | Interim, until the portal | Refuses Super Admins. Idempotent. |
-| `bin/rails admin:replace_super_admin FROM=… TO=… OPERATOR=…` | **Emergency only**: a Super Admin who is lost, compromised, disabled or unreachable | Retype TO's email to confirm. FROM must currently be a Super Admin in any status; TO must be active, verified and hold no role. In one transaction TO is granted, then FROM is revoked, giving two `emergency_replace` rows. FROM's admin sessions end at once. This works even when FROM is disabled and no active Super Admin remains. |
+| `bin/rails admin:provision_super_admin EMAIL=… NAME=… OPERATOR=…` | Once, on an unprovisioned system | Creates the system identity (verified email, `must_change_password`, 72 h temporary password); audit `provision`. Refused once a system identity exists in any state, or if the email belongs to any account. |
+| `bin/rails admin:recover_super_admin OPERATOR=… REASON=… [NEW_EMAIL=… NEW_NAME=…]` | Emergency: lost password, compromised, disabled | Same identity, never a new one: new temporary password, forced change, re-enabled, **every session ended**; optionally re-pointed to a newly designated person (email verified, change recorded). Audit `recover` with REASON in `note`. |
+| `bin/rails admin:grant EMAIL=… ROLE=president\|treasurer OPERATOR=…` / `admin:revoke EMAIL=… OPERATOR=…` | Interim, until the portal | Member accounts only; refuse `super_admin` and the system account. Idempotent. |
 
-To end a compromised admin's access immediately, revoke the role (or use the replacement task for
-a Super Admin). A password reset also ends every session.
-
-### Implications of using public registration as the identity route
-- Registration proves control of an **email address**, not identity or office. The operator must
-  confirm the person, and that they created this account, out of band before running `admin:grant`
-  or `admin:bootstrap`.
-- A squatter could register a future officer's address first. The out-of-band confirmation above is
-  the control; never grant a role to an account the officer doesn't recognise.
-- An admin account is also an ordinary member/applicant account with the same password, and it can
-  sign in to the member app. The two sessions stay isolated.
-- Anyone who controls the admin's mailbox can reset the password. This is why **admin MFA is a
-  production requirement** (PRE-PRODUCTION).
-- Leaving office means `admin:revoke`: the member account remains.
-- None of these needs a second identity model, so none was built.
+Before provisioning or re-pointing, confirm the designated person out of band. Admin accounts for President and
+Treasurer come from public registration, which proves control of an email address only: confirm the officer
+created that account before `admin:grant`, and remember whoever controls their mailbox can reset their
+password, which is why **admin MFA is a production requirement**.
 
 ## Tests
-- `test/controllers/api/v1/admin/auth/sessions_controller_test.rb`: login for all three roles with
-  the exact payload; cookie flags; digest-only storage; identical 401s (wrong password, unknown
-  email, disabled, non-admin, malformed); spoofed `admin_role` params and the `X-Admin-Role` header;
-  CSRF and Origin; malformed JSON; rotation; logout and replay; isolation in both directions,
-  including the membership endpoint; independent member and admin logins; 15-minute and 8-hour
-  expiry; revocation by revoke, switch, disable, password reset and callback-skipping changes;
-  rate limits; logs.
-- `test/controllers/api/v1/admin/base_controller_test.rb` (test-only probe controllers): deny by
-  default, and `require_admin_role(:super_admin)` (President and Treasurer get 403, re-read on every
-  request).
-- `test/models/admin_access_test.rb`: role and DB constraints; audit columns and atomicity;
-  read-only audit; enum shortcuts and plain updates rejected; bootstrap once, including after a
-  disabled or revoked Super Admin; last-Super-Admin guard (revoke, switch, disable) and successful
-  disable while another exists; emergency replacement (active, disabled, invalid target);
-  per-kind expiry.
-- `test/integration/admin_race_test.rb` (threads, committed rows): a revoke racing logins; two
-  concurrent Super Admin revokes, and a revoke plus a disable; a direct role change racing an
-  emergency replacement (deadlock regression); concurrent bootstraps; idle and absolute expiry
-  under parallel touches and resumes.
-- `test/tasks/admin_tasks_test.rb`: every task, its confirmation and its refusals.
-- Registration ignores `admin_role` (`registrations_controller_test.rb`).
+- `test/models/admin_access_test.rb`: roles and account types (model and SQL); one system identity, active or
+  disabled; `super_admin` only on it; the system account can't be a member; provisioning, recovery (same id,
+  re-enable, re-point, audit, reason); password change (current password, different, rules, sessions ended,
+  temporary password dead); audit read-only and atomic; enum shortcuts rejected; session rules per account.
+- `test/db/super_admin_system_identity_migration_test.rb`: legacy member Super Admin, and none.
+- `test/controllers/api/v1/admin/auth/passwords_controller_test.rb`: first sign-in to change, rotation, old
+  cookie and temporary password dead, 422s, CSRF/Origin, expiry, President/Treasurer, rate limit, logs.
+- `test/controllers/api/v1/admin/base_controller_test.rb` (test-only probes): deny by default; the restricted
+  session blocks a plain and a `require_admin_role(:super_admin)` probe until the change; role checks.
+- `test/controllers/api/v1/admin/auth/sessions_controller_test.rb`: login for all roles, cookie flags,
+  identical 401s, spoofed roles, CSRF/Origin, rotation, logout, isolation, expiry, revocation, rate limits, logs.
+- `test/integration/super_admin_isolation_test.rb`: no member login, application or reset for the Super Admin;
+  registration can't create or claim it; President and Treasurer keep member sign-in and applications.
+- `test/integration/admin_race_test.rb` (threads): revoke racing logins; concurrent provisioning → one;
+  parallel password changes with the same old password → one winner; expiry under parallel requests.
+- `test/tasks/admin_tasks_test.rb`: every task, the terminal and confirmation guards, refusals, the password
+  shown once and never logged.
 
 ## Dependencies
-- 0 (CSRF, Origin, rotation), 2 (verified email), 3 (sessions table and helpers), 5 (password reset
-  revokes all sessions).
+- 0 (CSRF, Origin, rotation), 2 (verified email), 3 (sessions), 5 (password reset).

@@ -267,6 +267,37 @@ async function send(
 export const apiPost = (path: string, data: unknown) => send("POST", path, data)
 export const apiPatch = (path: string, data: unknown) =>
   send("PATCH", path, data)
+export const apiDelete = (path: string) => send("DELETE", path, undefined)
+
+// Admin sign-in (Backend/docs/auth/admin-access.md): its own cookie and cache keys, never mixed with the
+// member's meQuery. The role is Rails' answer, used for display; Rails authorizes every admin request.
+export type AdminMe = {
+  user: {
+    id: number
+    full_name: string
+    email: string
+    admin_role: "super_admin" | "president" | "treasurer"
+    // A temporary password (the Super Admin's first sign-in): only the password page is usable.
+    must_change_password: boolean
+  }
+}
+
+const ADMIN_KEY = ["admin"]
+
+// A 401 means no admin session (none, expired, revoked or disabled): it resolves to null. Fresh for 30 s,
+// so route changes and window focus re-ask Rails at most that often.
+export const adminMeQuery = queryOptions({
+  queryKey: [...ADMIN_KEY, "me"],
+  queryFn: () => getOrNull<AdminMe>("/api/v1/admin/auth/me", 401),
+  staleTime: 30_000,
+  retry: false,
+})
+
+// Admin signed out (logout, or a 401 from any admin API): drop every admin query; member state stays.
+export function forgetAdminSession(queryClient: QueryClient) {
+  queryClient.removeQueries({ queryKey: ADMIN_KEY })
+  queryClient.setQueryData(adminMeQuery.queryKey, () => null)
+}
 
 // Every application write names the applicant it is meant for. After a sign-in changes in another
 // tab, Rails refuses it (409 identity_mismatch) instead of writing into someone else's application;

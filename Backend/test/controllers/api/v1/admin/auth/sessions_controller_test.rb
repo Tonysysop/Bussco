@@ -29,15 +29,16 @@ class Api::V1::Admin::Auth::SessionsControllerTest < ActionDispatch::Integration
   test "each admin role signs in and gets only its safe identity and role" do
     { "super_admin" => "sam@example.com", "president" => EMAIL, "treasurer" => "tia@example.com" }.each do |role, email|
       user = User.find_by(email:) || User.create!(full_name: "Some Admin", email:, password: PASSWORD,
-        email_verified_at: Time.current, admin_role: role)
+        email_verified_at: Time.current, admin_role: role, account_type: role == "super_admin" ? "system" : "member")
       @headers = browser_headers
 
       assert_difference("Session.where(user:, admin: true).count") { login(email:) }
       assert_response :created
       body = response.parsed_body
-      assert_equal({ "id" => user.id, "full_name" => user.full_name, "email" => email, "admin_role" => role }, body["user"])
+      assert_equal({ "id" => user.id, "full_name" => user.full_name, "email" => email, "admin_role" => role,
+        "must_change_password" => false }, body["user"])
       assert body["csrf_token"].present?
-      assert_no_match(/password|digest/, response.body)
+      assert_no_match(/digest|"password"/, response.body)
 
       me
       assert_response :ok
@@ -225,8 +226,6 @@ class Api::V1::Admin::Auth::SessionsControllerTest < ActionDispatch::Integration
   end
 
   test "revoking, switching or disabling, and changes that skip callbacks, end the admin session at once" do
-    super_admin = User.create!(full_name: "Sam Obi", email: "sam@example.com", password: PASSWORD,
-      email_verified_at: Time.current, admin_role: "super_admin")
     changes = {
       "role revoked" => -> { @admin.change_admin_role!(nil, by: "Ops", action: :revoke) },
       "role switched" => -> { @admin.change_admin_role!(:treasurer, by: "Ops", action: :grant) },
@@ -250,7 +249,6 @@ class Api::V1::Admin::Auth::SessionsControllerTest < ActionDispatch::Integration
       assert_response :unauthorized, name
       assert_not Session.where(user: @admin, admin: true).exists?, name
     end
-    assert super_admin.reload.super_admin?
   end
 
   test "admin login is rate limited per IP and per email, separately from member login" do

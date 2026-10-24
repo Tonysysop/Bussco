@@ -53,6 +53,8 @@ class MembershipApplication < ApplicationRecord
   validates :monthly_contribution_kobo, numericality: { only_integer: true, greater_than_or_equal_to: MINIMUM_MONTHLY_CONTRIBUTION_KOBO,
     less_than: 2**63 }, allow_nil: true
   validate :no_control_characters, :dates_well_formed, :passport_photo_acceptable
+  # The Super Admin (the system account) is not a cooperative member (docs/auth/admin-access.md).
+  validate(on: :create) { errors.add(:user, "must be a member account") if user&.system? }
 
   validates(*(STAGES.values.flatten - OPTIONAL), presence: true, on: :submit)
   validate :passport_photo_attached, :contribution_starts_next_month_or_later, on: :submit
