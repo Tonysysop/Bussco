@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_23_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,12 +49,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090000) do
     t.string "action", null: false
     t.string "changed_by", null: false
     t.datetime "created_at", null: false
+    t.string "note"
     t.index ["user_id"], name: "index_admin_role_changes_on_user_id"
-    t.check_constraint "action::text = ANY (ARRAY['bootstrap'::character varying, 'grant'::character varying, 'revoke'::character varying, 'emergency_replace'::character varying]::text[])", name: "admin_role_changes_action_allowed"
+    t.check_constraint "action::text <> 'recover'::text OR note IS NOT NULL AND note::text !~ '^\\s*$'::text", name: "admin_role_changes_recover_note"
+    t.check_constraint "action::text = ANY (ARRAY['bootstrap'::character varying, 'grant'::character varying, 'revoke'::character varying, 'emergency_replace'::character varying, 'provision'::character varying, 'recover'::character varying]::text[])", name: "admin_role_changes_action_allowed"
     t.check_constraint "changed_by::text !~ '^\\s*$'::text", name: "admin_role_changes_changed_by_present"
     t.check_constraint "new_role IS NULL OR (new_role::text = ANY (ARRAY['super_admin'::character varying, 'president'::character varying, 'treasurer'::character varying]::text[]))", name: "admin_role_changes_new_role_allowed"
     t.check_constraint "previous_role IS NULL OR (previous_role::text = ANY (ARRAY['super_admin'::character varying, 'president'::character varying, 'treasurer'::character varying]::text[]))", name: "admin_role_changes_previous_role_allowed"
-    t.check_constraint "previous_role::text IS DISTINCT FROM new_role::text", name: "admin_role_changes_changes_role"
+    t.check_constraint "previous_role::text IS DISTINCT FROM new_role::text OR action::text = 'recover'::text", name: "admin_role_changes_changes_role"
   end
 
   create_table "membership_applications", force: :cascade do |t|
@@ -147,9 +149,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_23_090000) do
     t.integer "password_reset_generation", default: 0, null: false
     t.integer "password_reset_attempts", default: 0, null: false
     t.string "admin_role"
+    t.string "account_type", default: "member", null: false
+    t.boolean "must_change_password", default: false, null: false
+    t.datetime "temporary_password_expires_at"
+    t.index ["account_type"], name: "users_one_system_identity", unique: true, where: "((account_type)::text = 'system'::text)"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["sap_id"], name: "index_users_on_sap_id", unique: true
+    t.check_constraint "(NOT admin_role::text IS DISTINCT FROM 'super_admin'::text) = (account_type::text = 'system'::text)", name: "users_super_admin_is_system"
     t.check_constraint "account_status::text = ANY (ARRAY['active'::character varying, 'disabled'::character varying]::text[])", name: "users_account_status_allowed"
+    t.check_constraint "account_type::text <> 'system'::text OR membership_status::text = 'not_started'::text AND sap_id IS NULL", name: "users_system_not_member"
+    t.check_constraint "account_type::text = ANY (ARRAY['member'::character varying, 'system'::character varying]::text[])", name: "users_account_type_allowed"
     t.check_constraint "admin_role IS NULL OR (admin_role::text = ANY (ARRAY['super_admin'::character varying, 'president'::character varying, 'treasurer'::character varying]::text[]))", name: "users_admin_role_allowed"
     t.check_constraint "admin_role IS NULL OR email_verified_at IS NOT NULL", name: "users_admin_email_verified"
     t.check_constraint "char_length(full_name::text) >= 1 AND char_length(full_name::text) <= 120 AND full_name::text !~ '^\\s|\\s$'::text", name: "users_full_name_trimmed_length"

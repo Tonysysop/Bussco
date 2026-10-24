@@ -16,7 +16,8 @@ module Api
         def create
           user = User.authenticate_by(email:, password: string_param(params[:password]))
 
-          if !user&.active?
+          # The system account (the Super Admin) is not a member and never signs in here.
+          if !user&.active? || user.system?
             render json: { error: "invalid_credentials" }, status: :unauthorized
           elsif !user.email_verified_at?
             render json: { error: "email_not_verified" }, status: :forbidden

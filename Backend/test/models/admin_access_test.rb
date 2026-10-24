@@ -1,30 +1,74 @@
 require "test_helper"
 
-# Admin roles, the role-change audit and the Super Admin guards (docs/auth/admin-access.md).
+# Admin roles, the single system Super Admin, the role-change audit and password changes
+# (docs/auth/admin-access.md).
 class AdminAccessTest < ActiveSupport::TestCase
+  PASSWORD = "correct horse battery".freeze
+
   def user(email, **attrs)
-    User.create!(full_name: "Some One", email:, password: "correct horse battery", email_verified_at: Time.current, **attrs)
+    User.create!(full_name: "Some One", email:, password: PASSWORD, email_verified_at: Time.current, **attrs)
   end
+
+  def provision(email = "root@example.com") = User.provision_super_admin!(email:, full_name: "System Admin", by: "Ops")
 
   # A savepoint, so a rejected statement doesn't abort the test's transaction.
   def assert_db_rejects(error, &) = assert_raises(error) { User.transaction(requires_new: true, &) }
 
+  def raw_user(email, **columns)
+    User.insert!({ full_name: "Raw", email:, password_digest: "x", email_verified_at: Time.current,
+      created_at: Time.current, updated_at: Time.current, **columns })
+  end
+
   def admin_session(user) = Session.create!(user:, admin: true, token_digest: SecureRandom.hex, last_seen_at: Time.current)
   def member_session(user) = Session.create!(user:, token_digest: SecureRandom.hex, last_seen_at: Time.current)
 
-  test "only known roles are accepted, by the model and by the database" do
-    record = User.new(full_name: "X", email: "x@example.com", password: "correct horse battery",
-      email_verified_at: Time.current, admin_role: "owner")
+  test "only known roles and account types are accepted, by the model and by the database" do
+    record = User.new(full_name: "X", email: "x@example.com", password: PASSWORD, email_verified_at: Time.current, admin_role: "owner")
     assert_not record.valid?
     assert record.errors.key?(:admin_role)
 
     assert_db_rejects(ActiveRecord::CheckViolation) { user("a@example.com").update_columns(admin_role: "owner") }
+    assert_db_rejects(ActiveRecord::CheckViolation) { raw_user("b@example.com", account_type: "robot") }
+  end
+
+  test "the database allows one system identity, and super_admin only on it" do
+    raw_user("sys@example.com", account_type: "system", admin_role: "super_admin")
+
+    assert_db_rejects(ActiveRecord::RecordNotUnique) { raw_user("two@example.com", account_type: "system", admin_role: "super_admin") }
+    assert_db_rejects(ActiveRecord::RecordNotUnique) do
+      raw_user("off@example.com", account_type: "system", admin_role: "super_admin", account_status: "disabled")
+    end
+    assert_db_rejects(ActiveRecord::CheckViolation) { raw_user("m@example.com", admin_role: "super_admin") }
+    member = user("p@example.com", admin_role: "president")
+    assert_db_rejects(ActiveRecord::CheckViolation) { member.update_columns(admin_role: "super_admin") }
+    assert_db_rejects(ActiveRecord::CheckViolation) { User.find_by!(email: "sys@example.com").update_columns(admin_role: "president") }
+    assert_db_rejects(ActiveRecord::CheckViolation) { User.find_by!(email: "sys@example.com").update_columns(admin_role: nil) }
+  end
+
+  test "the system account can never be a member" do
+    system = User.find(raw_user("sys@example.com", account_type: "system", admin_role: "super_admin").rows.first.first)
+    assert_db_rejects(ActiveRecord::CheckViolation) { system.update_columns(membership_status: "awaiting_approval") }
+    assert_db_rejects(ActiveRecord::CheckViolation) { system.update_columns(sap_id: "SAP-1") }
+
+    application = MembershipApplication.new(user: system)
+    assert_not application.valid?
+    assert_includes application.errors[:user], "must be a member account"
+  end
+
+  test "the model refuses super_admin on members and changing the account type" do
+    member = User.new(full_name: "X", email: "x@example.com", password: PASSWORD, email_verified_at: Time.current, admin_role: "super_admin")
+    assert_not member.valid?
+    assert_includes member.errors[:admin_role], "super_admin belongs only to the system account"
+
+    president = user("p@example.com", admin_role: "president")
+    assert_raises(User::ProvisioningError) { president.change_admin_role!(:super_admin, by: "Ops", action: :grant) }
+    assert_raises(ActiveRecord::ReadonlyAttributeError) { president.update!(account_type: "system") }
+    assert president.reload.member?
+    assert_equal 0, AdminRoleChange.count
   end
 
   test "an admin must have a verified email and an active account" do
     unverified = user("u@example.com", email_verified_at: nil)
-    assert_not unverified.update(admin_role: "president")
-    assert unverified.errors.key?(:email_verified_at)
     assert_db_rejects(ActiveRecord::CheckViolation) { unverified.update_columns(admin_role: "president") }
 
     admin = user("p@example.com", admin_role: "president")
@@ -61,9 +105,6 @@ class AdminAccessTest < ActiveSupport::TestCase
     target = user("t@example.com")
     assert_raises(ActiveRecord::RecordInvalid) { target.change_admin_role!(:treasurer, by: " ", action: :grant) }
     assert_nil target.reload.admin_role
-    assert_db_rejects(ActiveRecord::NotNullViolation) do
-      AdminRoleChange.insert!({ user_id: target.id, new_role: "treasurer", action: "grant", changed_by: nil, created_at: Time.current })
-    end
   end
 
   test "audit rows are read-only through the application" do
@@ -84,122 +125,114 @@ class AdminAccessTest < ActiveSupport::TestCase
     assert_equal [ kept.id ], target.sessions.pluck(:id)
   end
 
-  test "bootstrap makes the first Super Admin, once" do
-    first = user("s@example.com")
-    User.bootstrap_super_admin!(first, by: "Ops")
-    assert first.reload.super_admin?
-    assert_equal [ [ nil, "super_admin", "bootstrap", "Ops" ] ], AdminRoleChange.pluck(:previous_role, :new_role, :action, :changed_by)
-
-    error = assert_raises(User::ProvisioningError) { User.bootstrap_super_admin!(user("x@example.com"), by: "Ops") }
-    assert_match(/already provisioned/, error.message)
-  end
-
-  test "bootstrap is refused once a Super Admin was ever provisioned, even one now disabled or revoked" do
-    first = user("s@example.com")
-    User.bootstrap_super_admin!(first, by: "Ops")
-    first.update_columns(account_status: "disabled") # no active Super Admin remains
-
-    assert_raises(User::ProvisioningError) { User.bootstrap_super_admin!(user("x@example.com"), by: "Ops") }
-
-    first.update_columns(admin_role: nil) # no Super Admin at all, but the audit remembers one
-    assert_raises(User::ProvisioningError) { User.bootstrap_super_admin!(User.find_by!(email: "x@example.com"), by: "Ops") }
-    assert_equal 1, AdminRoleChange.count
-  end
-
-  test "the last active Super Admin can't be revoked, switched or disabled" do
-    only = user("s@example.com", admin_role: "super_admin")
-    user("old@example.com", admin_role: "super_admin").update_columns(account_status: "disabled") # disabled ones don't count
-
-    assert_raises(ActiveRecord::RecordNotSaved) { only.change_admin_role!(nil, by: "Ops", action: :revoke) }
-    assert_raises(ActiveRecord::RecordNotSaved) { only.reload.change_admin_role!(:president, by: "Ops", action: :grant) }
-    assert_raises(ActiveRecord::RecordNotSaved) { only.reload.disabled! }
-    assert only.reload.super_admin?
-    assert only.active?
-    assert_equal 0, AdminRoleChange.count
-  end
-
-  test "a Super Admin can be revoked while another active one remains" do
-    first = user("s1@example.com", admin_role: "super_admin")
-    user("s2@example.com", admin_role: "super_admin")
-
-    assert first.change_admin_role!(nil, by: "Ops", action: :revoke)
-    assert_nil first.reload.admin_role
-  end
-
-  test "a Super Admin can be disabled while another active one remains, ending their sessions; the last one can't" do
-    first = user("s1@example.com", admin_role: "super_admin")
-    second = user("s2@example.com", admin_role: "super_admin")
-    admin_session(first)
-    member_session(first)
-    kept = admin_session(second)
-
-    first.disabled!
-    assert first.reload.disabled?
-    assert_equal 0, first.sessions.count
-
-    assert_raises(ActiveRecord::RecordNotSaved) { second.disabled! }
-    second.reload
-    assert second.active?
-    assert second.super_admin?
-    assert_equal [ kept.id ], second.sessions.pluck(:id)
-    assert_equal 0, AdminRoleChange.count
-  end
-
   test "role changes outside change_admin_role! are rejected, so none skips the audit" do
     target = user("t@example.com", admin_role: "treasurer")
     session = admin_session(target)
 
-    [ -> { target.president! }, -> { target.update!(admin_role: "super_admin") }, -> { target.update!(admin_role: nil) } ].each do |change|
+    [ -> { target.president! }, -> { target.update!(admin_role: nil) } ].each do |change|
       error = assert_raises(ActiveRecord::RecordInvalid) { change.call }
       assert_includes error.record.errors[:admin_role], "can only be changed with change_admin_role!"
       target.reload
     end
     assert_not target.update(admin_role: "president")
-
     assert target.reload.treasurer?
     assert Session.exists?(session.id)
     assert_equal 0, AdminRoleChange.count
+  end
 
-    assert target.change_admin_role!(:president, by: "Ops", action: :grant) # the supported path still works
-    assert_raises(ActiveRecord::RecordInvalid) { target.reload.treasurer! } # and doesn't leave the door open
+  test "provisioning creates the one system Super Admin with a temporary password, digest only, audited" do
+    freeze_time do
+      user, password = provision
+      assert user.system?
+      assert user.super_admin?
+      assert user.must_change_password?
+      assert user.not_started?
+      assert user.email_verified_at?
+      assert_equal 72.hours.from_now, user.temporary_password_expires_at
+      assert_equal 24, password.length
+      assert user.authenticate(password)
+      assert_not_includes user.attributes.values.map(&:to_s), password
+      assert_equal [ [ nil, "super_admin", "provision", "Ops" ] ], AdminRoleChange.pluck(:previous_role, :new_role, :action, :changed_by)
+    end
+  end
+
+  test "provisioning is refused once a system identity exists, even a disabled one" do
+    root, = provision
+    assert_raises(User::ProvisioningError) { provision("another@example.com") }
+    root.update_columns(account_status: "disabled")
+    assert_raises(User::ProvisioningError) { provision("another@example.com") }
+    assert_equal [ root.id ], User.where(account_type: "system").pluck(:id)
     assert_equal 1, AdminRoleChange.count
   end
 
-  test "emergency replacement swaps atomically, with two audit rows, and ends the old account's admin sessions" do
-    from = user("lost@example.com", admin_role: "super_admin")
-    admin_session(from)
-    to = user("new@example.com")
-
-    User.replace_super_admin!(from, to, by: "Ops")
-    assert to.reload.super_admin?
-    assert_nil from.reload.admin_role
-    assert_equal 0, from.sessions.count
-    assert_equal [ [ "new@example.com", nil, "super_admin" ], [ "lost@example.com", "super_admin", nil ] ],
-      AdminRoleChange.order(:id).map { [ it.user.email, it.previous_role, it.new_role ] }
-    assert_equal [ "emergency_replace" ], AdminRoleChange.distinct.pluck(:action)
-  end
-
-  test "emergency replacement recovers from a disabled Super Admin when none is active" do
-    from = user("lost@example.com", admin_role: "super_admin")
-    from.update_columns(account_status: "disabled")
-    to = user("new@example.com")
-
-    User.replace_super_admin!(from, to, by: "Ops")
-    assert_equal [ to.id ], User.super_admin.active.pluck(:id)
-    assert_nil from.reload.admin_role
-  end
-
-  test "emergency replacement with an invalid target changes nothing" do
-    from = user("lost@example.com", admin_role: "super_admin")
-    targets = [ user("d@example.com", account_status: "disabled"), user("u@example.com", email_verified_at: nil),
-      user("p@example.com", admin_role: "president"), from ]
-
-    targets.each do |to|
-      assert_raises(User::ProvisioningError, ActiveRecord::RecordInvalid) { User.replace_super_admin!(from, to, by: "Ops") }
-    end
-    assert_raises(User::ProvisioningError) { User.replace_super_admin!(user("m@example.com"), user("n@example.com"), by: "Ops") }
-    assert from.reload.super_admin?
+  test "provisioning with a taken email and no system identity changes nothing" do
+    member = user("taken@example.com")
+    assert_raises(ActiveRecord::RecordInvalid) { provision(member.email) }
+    assert_nil User.system_account
     assert_equal 0, AdminRoleChange.count
+  end
+
+  test "changing the password needs the current one, ends every session, and the old password stops working" do
+    root, temporary = provision
+    admin_session(root)
+    other = admin_session(root)
+    started = nil
+
+    assert_nil root.change_password("wrong password!", "a brand new password") { started = :nope }
+    assert root.reload.must_change_password?
+
+    result = root.change_password(temporary, temporary)
+    assert_includes result.errors[:password], "must be different from the current password"
+    assert_includes root.reload.change_password(temporary, "short").errors[:password], "is too short (minimum is 12 characters)"
+    assert root.reload.must_change_password?
+
+    result = root.reload.change_password(temporary, "a brand new password") { started = Session.count }
+    assert_empty result.errors
+    assert_equal 0, started, "every session ends before the block starts the replacement"
+    assert_not Session.exists?(other.id)
+    root.reload
+    assert_not root.must_change_password?
+    assert_nil root.temporary_password_expires_at
+    assert_not root.authenticate(temporary)
+    assert root.authenticate("a brand new password")
+  end
+
+  test "recovery reissues credentials for the same identity, re-enables it, ends sessions and is audited" do
+    root, old = provision
+    root.change_password(old, "the chosen password")
+    root.update_columns(account_status: "disabled")
+    admin_session(root)
+
+    user, password = User.recover_super_admin!(by: "Ops", reason: "Lost device")
+    assert_equal root.id, user.id
+    assert user.active?
+    assert user.must_change_password?
+    assert user.authenticate(password)
+    assert_not user.authenticate("the chosen password")
+    assert_equal 0, user.sessions.count
+    assert_equal [ "super_admin", "super_admin", "recover", "Lost device" ],
+      AdminRoleChange.order(:id).last.attributes.values_at("previous_role", "new_role", "action", "note")
+    assert_equal 1, User.where(account_type: "system").count
+  end
+
+  test "recovery can re-point the identity at a newly designated person, recording the change" do
+    root, = provision
+    user, = User.recover_super_admin!(by: "Ops", reason: "Handover", email: "New.Admin@Example.com", full_name: "New Admin")
+    assert_equal [ root.id, "new.admin@example.com", "New Admin" ], [ user.id, user.email, user.full_name ]
+    assert_equal "Handover; email root@example.com → new.admin@example.com", AdminRoleChange.order(:id).last.note
+  end
+
+  test "recovery needs a provisioned identity and a reason" do
+    assert_raises(User::ProvisioningError) { User.recover_super_admin!(by: "Ops", reason: "x") }
+    provision
+    assert_raises(ActiveRecord::RecordInvalid) { User.recover_super_admin!(by: "Ops", reason: " ") }
+    assert_equal 1, AdminRoleChange.count # the provision row only: a rejected recovery leaves nothing
+  end
+
+  test "the system account gets no password reset code" do
+    root, = provision
+    assert_nil root.request_password_reset
+    assert_nil root.reload.password_reset_requested_at
   end
 
   test "expired uses each kind's limits" do
@@ -214,5 +247,17 @@ class AdminAccessTest < ActiveSupport::TestCase
     assert_not member_idle.expired?
     assert admin_old.expired?
     assert_not member_old.expired?
+  end
+
+  test "sessions follow the account: system rows never work as member sessions, expired temporary passwords end admin ones" do
+    root, = provision
+    Session.create!(user: root, token_digest: Session.digest("member"), last_seen_at: Time.current)
+    assert_nil Session.resume("member")
+    assert_not Session.exists?(token_digest: Session.digest("member"))
+
+    Session.create!(user: root, admin: true, token_digest: Session.digest("admin"), last_seen_at: Time.current)
+    assert Session.resume("admin", admin: true)
+    root.update_columns(temporary_password_expires_at: 1.minute.ago)
+    assert_nil Session.resume("admin", admin: true)
   end
 end

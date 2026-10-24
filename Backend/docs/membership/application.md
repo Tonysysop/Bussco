@@ -64,6 +64,10 @@ Validation rules:
 `users.membership_status` now allows `not_started | awaiting_approval`. Only submission sets it,
 in the same transaction as the application.
 
+Applications belong to **member** accounts only (A1.3). The Super Admin is the single `system` account
+(`docs/auth/admin-access.md`): it can't sign in to the member app, `MembershipApplication` refuses it on
+create, and the database keeps it at `not_started` with no SAP ID.
+
 ## API: `/api/v1/membership/application`
 - Every action needs a session; otherwise `401 { "error": "unauthenticated" }`. Disabled
   accounts get the same 401.

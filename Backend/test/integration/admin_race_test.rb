@@ -34,69 +34,51 @@ class AdminRaceTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "concurrent revokes of the only two active Super Admins leave exactly one" do
-    admins = [ user("s1@example.com", admin_role: "super_admin"), user("s2@example.com", admin_role: "super_admin") ]
-
-    outcomes = concurrently(admins) do |admin|
-      admin.change_admin_role!(nil, by: "Ops", action: :revoke)
-    rescue ActiveRecord::RecordNotSaved
-      :refused
-    end
-
-    assert_equal [ :refused, true ], outcomes.sort_by(&:to_s)
-    assert_equal 1, User.super_admin.active.count
-    assert_equal 1, AdminRoleChange.count
-  end
-
-  test "concurrent revoke and disable of the only two active Super Admins leave exactly one" do
-    first, second = user("s1@example.com", admin_role: "super_admin"), user("s2@example.com", admin_role: "super_admin")
-
-    concurrently([ -> { first.change_admin_role!(nil, by: "Ops", action: :revoke) }, -> { second.disabled! } ]) do |change|
-      change.call
-    rescue ActiveRecord::RecordNotSaved
-      :refused
-    end
-
-    assert_equal 1, User.super_admin.active.count
-  end
-
-  # Regression: change_admin_role! used to take the row lock before the advisory lock, the reverse of
-  # replace_super_admin!, so these two deadlocked.
-  test "a direct role change racing an emergency replacement of the same Super Admin never deadlocks" do
-    5.times do |round|
-      target = user("x#{round}@example.com", admin_role: "super_admin")
-      user("y#{round}@example.com", admin_role: "super_admin")
-      replacement = user("z#{round}@example.com")
-
-      outcomes = concurrently([ :revoke, :replace ]) do |item|
-        if item == :revoke
-          User.find(target.id).change_admin_role!(nil, by: "Ops", action: :revoke)
-        else
-          User.replace_super_admin!(User.find(target.id), User.find(replacement.id), by: "Ops")
-        end
-      rescue User::ProvisioningError
-        :not_a_super_admin # the revoke won; nothing left to replace
-      rescue ActiveRecord::Deadlocked => e
-        e
-      end
-
-      assert_not outcomes.any?(ActiveRecord::Deadlocked), "round #{round}: #{outcomes}"
-      assert_nil target.reload.admin_role
-      assert_equal outcomes.include?(:not_a_super_admin) ? 0 : 1, User.where(id: replacement.id).super_admin.count
-    end
-  end
-
-  test "concurrent bootstraps provision a single Super Admin" do
-    candidates = Array.new(3) { user("c#{it}@example.com") }
-
-    outcomes = concurrently(candidates) do |candidate|
-      User.bootstrap_super_admin!(candidate, by: "Ops")
+  test "concurrent provisioning creates a single system Super Admin" do
+    outcomes = concurrently(%w[a b c]) do |name|
+      User.provision_super_admin!(email: "#{name}@example.com", full_name: "System #{name}", by: "Ops")
+      :created
     rescue User::ProvisioningError
       :refused
     end
 
-    assert_equal [ :refused, :refused, true ], outcomes.sort_by(&:to_s)
-    assert_equal 1, User.super_admin.count
+    assert_equal [ :created, :refused, :refused ], outcomes.sort
+    assert_equal 1, User.where(account_type: "system").count
+    assert_equal 1, AdminRoleChange.where(action: "provision").count
+  end
+
+  test "parallel password changes with the same old password: one wins, every old session ends, the winner's new one works" do
+    root, temporary = User.provision_super_admin!(email: "root@example.com", full_name: "System Admin", by: "Ops")
+    get "/api/v1/csrf"
+    post "/api/v1/admin/auth/session", params: { email: root.email, password: temporary }, as: :json,
+      headers: { "Origin" => "http://www.example.com", "X-CSRF-Token" => response.parsed_body["csrf_token"] }
+    headers = { "Origin" => "http://www.example.com", "X-CSRF-Token" => response.parsed_body["csrf_token"] }
+    browser = { "_bussco_session" => cookies["_bussco_session"], "bussco_admin" => cookies["bussco_admin"] }
+
+    # Four tabs of the signed-in browser, each choosing a different new password.
+    tabs = Array.new(4) { |i| [ open_session.tap { |tab| browser.each { |k, v| tab.cookies[k] = v } }, "new password number #{i}" ] }
+    results = concurrently(tabs) do |tab, password|
+      tab.patch "/api/v1/admin/auth/password", params: { current_password: temporary, password: }, headers:, as: :json
+      [ tab.response.status, password, tab.cookies["bussco_admin"] ]
+    end
+
+    winners = results.select { |status, *| status == 200 }
+    assert_equal 1, winners.size, results.map(&:first).inspect
+    assert_empty results.map(&:first) - [ 200, 401, 422 ]
+    _, chosen, new_cookie = winners.sole
+    root.reload
+    assert root.authenticate(chosen)
+    assert_not root.authenticate(temporary)
+    assert_not root.must_change_password?
+    assert_equal 1, root.sessions.where(admin: true).count
+
+    check = open_session
+    check.cookies["bussco_admin"] = browser["bussco_admin"]
+    check.get "/api/v1/admin/auth/me", as: :json
+    assert_equal 401, check.response.status, "the pre-change session is revoked"
+    check.cookies["bussco_admin"] = new_cookie
+    check.get "/api/v1/admin/auth/me", as: :json
+    assert_equal 200, check.response.status, "the winner's fresh session works"
   end
 
   test "concurrent requests can't keep an admin session past its idle or absolute limit" do

@@ -6,6 +6,8 @@ module Api
       # subclass skips that check by name.
       class BaseController < Api::V1::BaseController
         before_action :require_authentication
+        # A temporary password opens nothing but /me, logout and the password change, which skip this by name.
+        before_action :require_password_changed
 
         private
 
@@ -20,8 +22,13 @@ module Api
           render json: { error: "forbidden" }, status: :forbidden unless current_admin.admin_role.in?(roles.map(&:to_s))
         end
 
+        def require_password_changed
+          render json: { error: "password_change_required" }, status: :forbidden if current_admin.must_change_password?
+        end
+
         def admin_json(user)
-          { id: user.id, full_name: user.full_name, email: user.email, admin_role: user.admin_role }
+          { id: user.id, full_name: user.full_name, email: user.email, admin_role: user.admin_role,
+            must_change_password: user.must_change_password }
         end
       end
     end

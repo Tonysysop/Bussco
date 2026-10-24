@@ -55,6 +55,20 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.input<typeof loginSchema>
 
+// The admin login design's own messages and email check (design-reference admin login README).
+export const adminLoginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Enter your corporate email address.")
+    .regex(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      "Enter a valid email address, e.g. name@company.com."
+    ),
+  password: z.string().min(1, "Enter your password."),
+})
+
 export const verifyEmailSchema = z.object({
   email: signupSchema.shape.email,
   code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
@@ -69,6 +83,23 @@ export const resetPasswordSchema = z
   })
 
 export type ResetPasswordInput = z.input<typeof resetPasswordSchema>
+
+// Admin password change (PATCH /api/v1/admin/auth/password): Rails checks the current password and the
+// same rules again; the confirmation and "different from the current one" are also checked here.
+export const adminPasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Enter your current password."),
+    password: passwordSchema,
+    confirmation: z.string(),
+  })
+  .refine((values) => values.password === values.confirmation, {
+    path: ["confirmation"],
+    message: "Passwords don't match",
+  })
+  .refine((values) => values.password !== values.current_password, {
+    path: ["password"],
+    message: "Password must be different from the current password",
+  })
 
 // Employment stage: mirrors MembershipApplication's rules (Backend/app/models/membership_application.rb).
 // Blank is allowed for drafts; Save & Continue adds the required check (requireAll).
