@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BUSSCO Super Admin — Audit Log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&amp;family=Instrument+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0}
+.sb-wrap{max-width:100%}
+@media (max-width: 860px){.sb-wrap{position:static !important;align-self:stretch !important;flex-basis:100% !important}}
+a{color:#75141A}a:hover{color:#9E1B22}
+.bx-btn{background:#FFFFFF;color:#1F2937;border:1px solid #D1D5DB}
+.bx-btn:hover{background:#F9FAFB;border-color:#9CA3AF}
+.bx-btn:focus-visible,.bx-chip:focus-visible,.bx-ev:focus-visible{outline:2px solid #9E1B22;outline-offset:2px}
+.bx-search,.bx-select{border:1px solid #D1D5DB;background:#FFFFFF}
+.bx-search:focus,.bx-select:focus{outline:none;border-color:#9E1B22;box-shadow:0 0 0 3px rgba(158,27,34,.16)}
+.bx-chip{background:#FFFFFF;color:#374151;border:1px solid #E5E7EB}
+.bx-chip:hover{border-color:#9CA3AF;color:#1F2937}
+.bx-chip.is-on{background:#75141A;color:#FFFFFF;border-color:#75141A}
+.bx-ev{background:transparent}
+.bx-ev:hover{background:#FAFAFB}
+.bx-ev.is-open{background:#FCF8F8}
+.bx-chev{transition:transform .15s ease}
+.bx-ev.is-open .bx-chev{transform:rotate(180deg)}
+@media (prefers-reduced-motion: reduce){.bx-chev{transition:none}}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #F8F9FB; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2937">
+
+<div class="sb-wrap" style="flex: 1 1 {{sbBasis}}; display: flex; flex-direction: column; background: #FFFFFF; border-right: 1px solid #E5E7EB; position: sticky; top: 0; align-self: flex-start; z-index: 10">
+<dc-import name="Sidebar" active="audit" collapsed="{{sbCollapsed}}" on-toggle="{{toggleSb}}" hint-size="100%,900px"></dc-import>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 36px clamp(16px, 3vw, 40px) 48px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px">
+<p style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.18em; color: #9E1B22"><span aria-hidden="true" style="width: 24px; height: 1px; background: #9E1B22"></span>SUPER ADMIN</p>
+<h1 style="margin: 0; font-family: 'Newsreader', Georgia, serif; font-weight: 400; font-size: 44px; line-height: 1.05; letter-spacing: -0.02em">Audit Log</h1>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4B5563">Every administrative action across the cooperative: who did it, when, and what changed. Entries are read-only.</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<span style="height: 28px; box-sizing: border-box; padding: 0 10px; border-radius: 999px; border: 1px dashed #C4C9D1; font-size: 12px; font-weight: 500; color: #5B6472; display: inline-flex; align-items: center">Sample data</span>
+<button type="button" class="bx-btn" style="height: 44px; padding: 0 16px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; cursor: pointer"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M5 20h14"></path></svg>Export log</button>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+<sc-for list="{{stats}}" as="k" hint-placeholder-count="4">
+<div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 500; color: #4B5563">{{k.label}}</span>
+<div style="display: flex; align-items: baseline; gap: 10px">
+<span style="font-family: 'Newsreader', Georgia, serif; font-size: 32px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums">{{k.value}}</span>
+<sc-if value="{{k.warn}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; font-weight: 600; color: #7A4E0E; display: inline-flex; align-items: center; gap: 4px"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9.5 17h-19z"></path><path d="M12 10v4"></path><path d="M12 17v.3"></path></svg>Review</span></sc-if>
+</div>
+<span style="font-size: 12.5px; color: #5B6472">{{k.note}}</span>
+</div>
+</sc-for>
+</div>
+
+<section aria-label="Audit events" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 14px; display: flex; flex-direction: column; min-width: 0">
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; border-bottom: 1px solid #EEF0F3">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<div style="position: relative; flex: 1 1 260px; max-width: 440px">
+<label for="al-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search by person, member, or reference</label>
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="1.8" stroke-linecap="round" style="position: absolute; left: 14px; top: 13px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input id="al-search" class="bx-search" type="search" placeholder="Search by person, member, or reference" value="{{q}}" onChange="{{onQ}}" style="width: 100%; height: 44px; box-sizing: border-box; padding: 0 14px 0 42px; border-radius: 10px; font-family: inherit; font-size: 14px; color: #1F2937">
+</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<label for="al-range" style="font-size: 13.5px; font-weight: 500; color: #4B5563">Period</label>
+<select id="al-range" class="bx-select" value="{{range}}" onChange="{{onRange}}" style="height: 44px; padding: 0 12px; border-radius: 10px; font-family: inherit; font-size: 14px; color: #1F2937">
+<option value="today">Today</option>
+<option value="7d">Last 7 days</option>
+<option value="30d">Last 30 days</option>
+</select>
+</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<label for="al-role" style="font-size: 13.5px; font-weight: 500; color: #4B5563">Done by</label>
+<select id="al-role" class="bx-select" value="{{role}}" onChange="{{onRole}}" style="height: 44px; padding: 0 12px; border-radius: 10px; font-family: inherit; font-size: 14px; color: #1F2937">
+<option value="all">Anyone</option>
+<option value="Super Admin">Super Admin</option>
+<option value="President">President</option>
+<option value="Vice President">Vice President</option>
+<option value="Treasurer">Treasurer</option>
+<option value="System">System</option>
+</select>
+</div>
+</div>
+<div role="group" aria-label="Category" style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="8">
+<button type="button" class="{{c.cls}}" aria-pressed="{{c.pressed}}" onClick="{{c.pick}}" style="height: 36px; padding: 0 14px; border-radius: 999px; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px">{{c.label}}<span style="font-size: 12px; opacity: 0.75; font-variant-numeric: tabular-nums">{{c.count}}</span></button>
+</sc-for>
+</div>
+</div>
+
+<sc-for list="{{days}}" as="d" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column">
+<h2 style="margin: 0; padding: 14px 20px 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; color: #5B6472; background: #FAFAFB; border-bottom: 1px solid #EEF0F3">{{d.label}}</h2>
+<ol style="list-style: none; margin: 0; padding: 0">
+<sc-for list="{{d.events}}" as="e" hint-placeholder-count="4">
+<li style="border-bottom: 1px solid #EEF0F3">
+<button type="button" class="{{e.cls}}" aria-expanded="{{e.expanded}}" aria-controls="{{e.panelId}}" onClick="{{e.toggle}}" style="width: 100%; border: 0; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; text-align: left; font-family: inherit; color: inherit; cursor: pointer">
+<span style="flex: 0 0 48px; font-size: 13px; color: #5B6472; font-variant-numeric: tabular-nums">{{e.time}}</span>
+<span aria-hidden="true" style="width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: {{e.avBg}}; color: {{e.avFg}}; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{e.initials}}</span>
+<span style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 14px; line-height: 1.45"><strong style="font-weight: 600">{{e.actor}}</strong> <span style="color: #5B6472">· {{e.role}}</span> — {{e.action}}</span>
+<span style="font-size: 13px; color: #4B5563">{{e.target}}</span>
+</span>
+<span style="height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: {{e.catBg}}; color: {{e.catFg}}">
+<sc-if value="{{e.warn}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9.5 17h-19z"></path><path d="M12 10v4"></path><path d="M12 17v.3"></path></svg></sc-if>{{e.cat}}</span>
+<svg class="bx-chev" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<sc-if value="{{e.open}}" hint-placeholder-val="{{ false }}">
+<div id="{{e.panelId}}" style="padding: 4px 20px 20px 84px; background: #FCF8F8; display: flex; flex-wrap: wrap; gap: 16px">
+<sc-if value="{{e.hasChange}}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1 1 280px; min-width: 0; background: #FFFFFF; border: 1px solid #EEE3E3; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; color: #9E1B22">WHAT CHANGED</span>
+<sc-for list="{{e.changes}}" as="c" hint-placeholder-count="1">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13.5px">
+<span style="flex: 1 1 140px; color: #374151">{{c.field}}</span>
+<span style="padding: 3px 8px; border-radius: 6px; background: #F3F4F6; color: #4B5563; text-decoration: line-through; text-decoration-color: #9CA3AF">{{c.from}}</span>
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+<span style="padding: 3px 8px; border-radius: 6px; background: #F7ECEC; color: #75141A; font-weight: 600">{{c.to}}</span>
+</div>
+</sc-for>
+<sc-if value="{{e.hasNote}}" hint-placeholder-val="{{ false }}"><p style="margin: 0; padding-top: 8px; border-top: 1px solid #F1F2F5; font-size: 13px; line-height: 1.5; color: #4B5563">Note: “{{e.note}}”</p></sc-if>
+</div>
+</sc-if>
+<dl style="flex: 1 1 280px; min-width: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 110px) minmax(0, 1fr); gap: 8px 12px; align-content: start; font-size: 13px">
+<dt style="color: #5B6472">Reference</dt><dd style="margin: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; color: #1F2937">{{e.ref}}</dd>
+<dt style="color: #5B6472">Date &amp; time</dt><dd style="margin: 0; color: #1F2937">{{e.full}}</dd>
+<dt style="color: #5B6472">IP address</dt><dd style="margin: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; color: #1F2937">{{e.ip}}</dd>
+<dt style="color: #5B6472">Device</dt><dd style="margin: 0; color: #1F2937">{{e.device}}</dd>
+</dl>
+</div>
+</sc-if>
+</li>
+</sc-for>
+</ol>
+</div>
+</sc-for>
+
+<sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 56px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
+<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<p style="margin: 0; font-size: 15px; font-weight: 600">No events match these filters</p>
+<p style="margin: 0; font-size: 13.5px; color: #5B6472">Try a longer period or clear the category.</p>
+</div>
+</sc-if>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px">
+<span style="font-size: 13px; color: #5B6472">{{footText}}</span>
+<button type="button" class="bx-btn" style="height: 40px; padding: 0 14px; border-radius: 10px; font-family: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer">Load older events</button>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    try { if (window.localStorage.getItem('bussco.sidebarCollapsed') === '1') this.setState({ sbCollapsed: true }); } catch (e) {}
+  }
+  sb() {
+    const c = !!(this.state && this.state.sbCollapsed);
+    return {
+      sbCollapsed: c,
+      sbBasis: c ? '76px' : '248px',
+      toggleSb: () => {
+        const n = !c;
+        try { window.localStorage.setItem('bussco.sidebarCollapsed', n ? '1' : '0'); } catch (e) {}
+        this.setState({ sbCollapsed: n });
+      }
+    };
+  }
+  events() {
+    const lagos = 'Lagos, NG';
+    return [
+      { day: 0, time: '10:42', actor: 'Tunde Bakare', role: 'Treasurer', cat: 'Savings', action: 'recorded the October contributions batch', target: '1,182 members · ₦66,214,500 · batch CB-2026-10', ref: 'EVT-20261023-0147', ip: '102.89.34.17 · ' + lagos, device: 'Chrome on Windows' },
+      { day: 0, time: '10:05', actor: 'System', role: 'Security', cat: 'Security', warn: true, action: 'blocked admin sign-in after 3 failed attempts', target: 'Account m.danjuma@company.com (suspended member)', ref: 'EVT-20261023-0139', ip: '197.210.53.88 · Abuja, NG', device: 'Safari on iPhone', changes: [{ field: 'Admin portal access', from: 'Allowed', to: 'Blocked 30 min' }] },
+      { day: 0, time: '09:15', actor: 'Emeka Nwosu', role: 'President', cat: 'Loans', action: 'approved a loan', target: 'Grace Ojo · ₦2,000,000 · LN-2026-0418', ref: 'EVT-20261023-0121', ip: '102.89.40.2 · ' + lagos, device: 'Edge on Windows', changes: [{ field: 'Loan status', from: 'Recommended', to: 'Approved' }], note: 'Within 3× savings limit. Guarantors confirmed.' },
+      { day: 0, time: '08:50', actor: 'Adaeze Okafor', role: 'Super Admin', cat: 'Access & roles', action: 'changed a role permission', target: 'Vice President · Export reports', ref: 'EVT-20261023-0114', ip: '102.89.34.21 · ' + lagos, device: 'Chrome on macOS', changes: [{ field: 'Export reports', from: 'Off', to: 'On' }] },
+      { day: 0, time: '08:31', actor: 'Adaeze Okafor', role: 'Super Admin', cat: 'Security', action: 'signed in to the admin portal', target: 'Password sign-in · session started', ref: 'EVT-20261023-0109', ip: '102.89.34.21 · ' + lagos, device: 'Chrome on macOS' },
+      { day: 1, time: '16:20', actor: 'Halima Yusuf', role: 'Vice President', cat: 'Loans', action: 'reviewed and recommended a loan', target: 'Oluwaseun Adeyemi · ₦3,000,000 · LN-2026-0421', ref: 'EVT-20261022-0188', ip: '102.89.36.140 · ' + lagos, device: 'Chrome on Windows', changes: [{ field: 'Loan status', from: 'Submitted', to: 'Recommended' }], note: 'Recommend approval. Repayment within 28% of net pay.' },
+      { day: 1, time: '14:02', actor: 'Tunde Bakare', role: 'Treasurer', cat: 'Savings', action: 'approved a savings withdrawal', target: 'Aisha Lawal · ₦180,000 · WD-2026-0233', ref: 'EVT-20261022-0161', ip: '102.89.34.17 · ' + lagos, device: 'Chrome on Windows', changes: [{ field: 'Withdrawal status', from: 'Pending', to: 'Approved' }] },
+      { day: 1, time: '11:03', actor: 'Adaeze Okafor', role: 'Super Admin', cat: 'Members', action: 'created a member account', target: 'Kemi Adewale · BUA-02317 · Finance', ref: 'EVT-20261022-0140', ip: '102.89.34.21 · ' + lagos, device: 'Chrome on macOS', changes: [{ field: 'Account status', from: 'None', to: 'Pending' }] },
+      { day: 1, time: '09:40', actor: 'Emeka Nwosu', role: 'President', cat: 'Members', action: 'suspended a member', target: 'Musa Danjuma · BUA-00876', ref: 'EVT-20261022-0122', ip: '102.89.40.2 · ' + lagos, device: 'Edge on Windows', changes: [{ field: 'Account status', from: 'Active', to: 'Suspended' }], note: 'Loan repayment overdue by more than 90 days.' },
+      { day: 2, time: '23:59', actor: 'System', role: 'Automated', cat: 'Savings', action: 'posted monthly savings interest', target: 'All active savings accounts', ref: 'EVT-20261021-0230', ip: 'Internal', device: 'Scheduled job' },
+      { day: 2, time: '15:30', actor: 'Adaeze Okafor', role: 'Super Admin', cat: 'Settings', action: 'updated the standard loan interest rate', target: 'Applies to new loans from 1 Nov 2026', ref: 'EVT-20261021-0174', ip: '102.89.34.21 · ' + lagos, device: 'Chrome on macOS', changes: [{ field: 'Interest rate', from: '8.0% p.a.', to: '7.5% p.a.' }], note: 'As resolved at the October executive meeting.' },
+      { day: 2, time: '12:12', actor: 'Tunde Bakare', role: 'Treasurer', cat: 'Loans', action: 'disbursed an approved loan', target: 'Chidi Obi · ₦1,000,000 · LN-2026-0409', ref: 'EVT-20261021-0133', ip: '102.89.34.17 · ' + lagos, device: 'Chrome on Windows', changes: [{ field: 'Loan status', from: 'Approved', to: 'Disbursed' }] },
+      { day: 2, time: '10:00', actor: 'Halima Yusuf', role: 'Vice President', cat: 'Reports', action: 'exported a report', target: 'Loan portfolio summary · PDF', ref: 'EVT-20261021-0101', ip: '102.89.36.140 · ' + lagos, device: 'Chrome on Windows' }
+    ];
+  }
+  renderVals() {
+    const s = this.state || {};
+    const q = s.q || '';
+    const role = s.role || 'all';
+    const range = s.range || '7d';
+    const cat = s.cat || 'All';
+    const openId = s.open || null;
+    const dayLabels = ['TODAY · FRIDAY 23 OCTOBER 2026', 'YESTERDAY · THURSDAY 22 OCTOBER', 'WEDNESDAY 21 OCTOBER'];
+    const dayFull = ['23 Oct 2026', '22 Oct 2026', '21 Oct 2026'];
+    const catStyle = {
+      'Access & roles': ['#F7ECEC', '#75141A'],
+      Security: ['#FDF4E3', '#7A4E0E']
+    };
+    const needle = q.trim().toLowerCase();
+    const all = this.events();
+    const inRange = all.filter((e) => range !== 'today' || e.day === 0);
+    const byRole = inRange.filter((e) => role === 'all' || e.role === role || (role === 'System' && e.actor === 'System'));
+    const bySearch = byRole.filter((e) => !needle || (e.actor + ' ' + e.target + ' ' + e.ref + ' ' + e.action).toLowerCase().indexOf(needle) !== -1);
+    const shown = bySearch.filter((e) => cat === 'All' || e.cat === cat);
+    const cats = ['All', 'Access & roles', 'Members', 'Savings', 'Loans', 'Settings', 'Reports', 'Security'];
+    const initials = (n) => n === 'System' ? 'SY' : n.split(' ').map((p) => p[0]).join('').slice(0, 2);
+    const days = [0, 1, 2].map((d) => ({
+      label: dayLabels[d],
+      events: shown.filter((e) => e.day === d).map((e) => {
+        const isOpen = openId === e.ref;
+        const cs = catStyle[e.cat] || ['#F3F4F6', '#374151'];
+        return Object.assign({}, e, {
+          initials: initials(e.actor),
+          avBg: e.actor === 'System' ? '#EEF0F3' : (e.role === 'Super Admin' ? '#75141A' : '#F7ECEC'),
+          avFg: e.actor === 'System' ? '#374151' : (e.role === 'Super Admin' ? '#FFFFFF' : '#75141A'),
+          catBg: cs[0], catFg: cs[1], warn: !!e.warn,
+          open: isOpen, expanded: isOpen ? 'true' : 'false', cls: isOpen ? 'bx-ev is-open' : 'bx-ev',
+          panelId: 'p-' + e.ref,
+          hasChange: !!(e.changes && e.changes.length), changes: e.changes || [],
+          hasNote: !!e.note, note: e.note || '',
+          full: dayFull[e.day] + ', ' + e.time + ' WAT',
+          toggle: () => this.setState({ open: isOpen ? null : e.ref })
+        });
+      })
+    })).filter((g) => g.events.length > 0);
+    return {
+      ...this.sb(),
+      q, role, range,
+      stats: [
+        { label: 'Events today', value: '48', note: 'Across 5 administrators and system jobs' },
+        { label: 'Permission changes', value: '6', note: 'In the last 30 days' },
+        { label: 'Failed admin sign-ins', value: '3', note: 'Today · 1 account blocked', warn: true },
+        { label: 'Loan decisions', value: '19', note: 'Reviews, approvals and disbursements this week' }
+      ],
+      chips: cats.map((c) => ({
+        label: c,
+        count: c === 'All' ? bySearch.length : bySearch.filter((e) => e.cat === c).length,
+        cls: cat === c ? 'bx-chip is-on' : 'bx-chip',
+        pressed: cat === c ? 'true' : 'false',
+        pick: () => this.setState({ cat: c, open: null })
+      })),
+      days,
+      empty: shown.length === 0,
+      footText: 'Showing ' + shown.length + ' of ' + all.length + ' sample events',
+      onQ: (e) => this.setState({ q: e.target.value }),
+      onRole: (e) => this.setState({ role: e.target.value }),
+      onRange: (e) => this.setState({ range: e.target.value, open: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

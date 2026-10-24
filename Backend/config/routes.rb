@@ -20,13 +20,18 @@ Rails.application.routes.draw do
         get "me", to: "sessions#show"
       end
 
-      # Admin login only; roles are provisioned by operators (lib/tasks/admin.rake), never through the API.
+      # Admin login, and Super Admin management of President and Treasurer. The Super Admin itself is
+      # provisioned only by operators (lib/tasks/admin.rake), never through the API.
       namespace :admin do
         namespace :auth do
           resource :session, only: [ :create, :destroy ]
           resource :password, only: :update
           get "me", to: "sessions#show"
         end
+        resources :administrators, only: [ :index, :update ] do
+          get :eligible, on: :collection
+        end
+        resources :role_changes, only: :index
       end
 
       namespace :membership do

@@ -83,6 +83,7 @@ class Api::V1::Admin::BaseControllerTest < ActionDispatch::IntegrationTest
       get "/api/v1/admin/any", as: :json
       assert_equal "president", response.parsed_body["role"]
 
+      User.find_by(email: "treasurer@example.com").update_columns(admin_role: nil) # one holder per office
       User.find_by(email: "president@example.com").update_columns(admin_role: "treasurer") # skips the callbacks
       get "/api/v1/admin/any", as: :json
       assert_equal "treasurer", response.parsed_body["role"]

@@ -111,4 +111,14 @@ class AdminTasksTest < ActiveSupport::TestCase
     assert run_task("admin:grant", { "EMAIL" => root.email, "ROLE" => "president", "OPERATOR" => "Ops" }).last
     assert root.reload.super_admin?
   end
+
+  test "grant refuses an occupied office, leaving its holder" do
+    holder = user("pres@example.com", admin_role: "president")
+    target = user("tia@example.com")
+    output, aborted = run_task("admin:grant", { "EMAIL" => target.email, "ROLE" => "president", "OPERATOR" => "Ops" })
+    assert aborted
+    assert_match(/Nothing changed: Admin role has already been taken/, output)
+    assert holder.reload.president?
+    assert_nil target.reload.admin_role
+  end
 end

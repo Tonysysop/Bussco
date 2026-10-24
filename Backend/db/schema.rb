@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_24_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_24_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -50,6 +50,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_090000) do
     t.string "changed_by", null: false
     t.datetime "created_at", null: false
     t.string "note"
+    t.bigint "changed_by_user_id"
+    t.index ["changed_by_user_id"], name: "index_admin_role_changes_on_changed_by_user_id"
     t.index ["user_id"], name: "index_admin_role_changes_on_user_id"
     t.check_constraint "action::text <> 'recover'::text OR note IS NOT NULL AND note::text !~ '^\\s*$'::text", name: "admin_role_changes_recover_note"
     t.check_constraint "action::text = ANY (ARRAY['bootstrap'::character varying, 'grant'::character varying, 'revoke'::character varying, 'emergency_replace'::character varying, 'provision'::character varying, 'recover'::character varying]::text[])", name: "admin_role_changes_action_allowed"
@@ -153,6 +155,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_090000) do
     t.boolean "must_change_password", default: false, null: false
     t.datetime "temporary_password_expires_at"
     t.index ["account_type"], name: "users_one_system_identity", unique: true, where: "((account_type)::text = 'system'::text)"
+    t.index ["admin_role"], name: "users_one_holder_per_office", unique: true, where: "((admin_role)::text = ANY ((ARRAY['president'::character varying, 'treasurer'::character varying])::text[]))"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["sap_id"], name: "index_users_on_sap_id", unique: true
     t.check_constraint "(NOT admin_role::text IS DISTINCT FROM 'super_admin'::text) = (account_type::text = 'system'::text)", name: "users_super_admin_is_system"
@@ -172,6 +175,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_24_090000) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_role_changes", "users"
+  add_foreign_key "admin_role_changes", "users", column: "changed_by_user_id"
   add_foreign_key "membership_applications", "users", on_delete: :cascade
   add_foreign_key "sessions", "users", on_delete: :cascade
 end

@@ -1,7 +1,7 @@
-# Increments 6 (A1.1) and A1.3 — Admin authentication, the system Super Admin, controlled provisioning
+# Increments 6 (A1.1), A1.3 and A1.4 — Admin authentication, the system Super Admin, provisioning, role management
 
-Status: **implemented** (backend, plus the admin login and password screens in A1.2). There is no Super
-Admin management portal or API yet, and no approval permissions.
+Status: **implemented** (backend, the admin login and password screens in A1.2, and the Super Admin
+management portal in A1.4). No approval permissions.
 
 ## Scope
 - Three admin roles in `users.admin_role`: **Super Admin**, **President**, **Treasurer**.
@@ -12,12 +12,13 @@ Admin management portal or API yet, and no approval permissions.
   shared `users` identity store and `sessions` table.
 - An authorization foundation for later admin endpoints: deny by default, a restricted first-login session,
   and `require_admin_role`.
+- **A1.4:** the Super Admin assigns, switches and revokes President and Treasurer in the portal (see
+  "Super Admin role management"). **One holder per office.**
 
 ## Exclusions
 - Public admin signup, and any role or account type chosen by the client.
-- The Super Admin management portal and its API (assign, revoke or switch President/Treasurer; list admins
-  and audit history). Until then the interim `admin:grant` / `admin:revoke` tasks manage those roles. The
-  portal can never create, promote or duplicate a Super Admin.
+- Creating, promoting or duplicating a Super Admin through the portal or API (never; operator tasks only).
+- Dynamic roles or a permission matrix; the design's matrix is not built.
 - Membership and financial approval permissions (A2). No role, Super Admin included, has approval authority
   or can bypass cooperative financial policy.
 - Admin MFA: a production blocker in `PRE-PRODUCTION.md` (B7).
@@ -101,10 +102,30 @@ verified email and an unexpired temporary password (if any); member rows need a 
 ## Authorization foundation
 - `Api::V1::Admin::BaseController`: `require_authentication` (deny by default), then `require_password_changed`;
   `current_admin`; `require_admin_role(*roles)` → `403 { "error": "forbidden" }` unless the stored role is listed.
-- **Rules for the future portal (not built):** role management only behind `require_admin_role(:super_admin)`;
-  never the actor's own role; President and Treasurer get no role management; `super_admin` is never
-  grantable (the database refuses it anyway). Its tests must cover 403 for President/Treasurer, 401 for a
-  member and anonymous, refused self-change, and audit rows recording the acting Super Admin.
+- Role management sits only behind `require_admin_role(:super_admin)`; never the actor's own role; President
+  and Treasurer get no role management; `super_admin` is never grantable (the database refuses it anyway).
+
+## Super Admin role management (A1.4)
+All `require_admin_role(:super_admin)` (so also the password-changed gate, CSRF and Origin):
+
+| Endpoint | Result |
+|---|---|
+| `GET /api/v1/admin/administrators` | `{ administrators: [{ id, full_name, email, admin_role, account_status }] }`: every account with a role, the Super Admin included |
+| `GET /api/v1/admin/administrators/eligible?q=` | `{ accounts: [...] }`: up to 10 active, verified members with no role, name or email containing `q` (2+ characters; wildcards literal) |
+| `PATCH /api/v1/admin/administrators/:id` `{ "role": "president" \| "treasurer" \| null }` | `200 { administrator, changed }`. `422 invalid_role` (anything else, `super_admin`, or no `role` key), `404 not_found`, `422 not_allowed` (the actor, the system account), `422 not_eligible` (grant to a disabled or unverified account), `409 conflict` (rejected by a concurrent change; nothing changed) |
+| `GET /api/v1/admin/role_changes` | `{ role_changes: [{ id, previous_role, new_role, action, actor, created_at, user: { id, full_name, email } }] }`, newest first, read-only (no write routes) |
+
+- **One holder per office:** validation plus the partial unique index `users_one_holder_per_office`. A role
+  goes through `User#assign_admin_office!`: in one transaction it demotes the current holder (audit `revoke`)
+  and grants the target (audit `grant`, previous role recorded when switching office). Both accounts' admin
+  sessions end; membership, application and status data are untouched. `null` revokes via `change_admin_role!`.
+- **Locking:** every role change (portal, rake, model) first takes one transaction-level advisory lock
+  (`User.lock_admin_roles`, `pg_advisory_xact_lock`), then the user-row lock, so role changes run one at a
+  time in one lock order and the current holder is re-read under it. Admin login takes only the row lock and
+  changes no role, so the two can't deadlock. Any failure rolls back roles, audit rows and session deletes
+  together.
+- **Actor:** portal rows set `changed_by_user_id` to the acting admin (and `changed_by` to their email at the
+  time); `role_changes` shows that user's name. Operator and older rows keep their `changed_by` text.
 
 ## Revocation (same transaction as the change, plus the per-request re-check)
 | Change | Effect |
@@ -117,11 +138,11 @@ verified email and an unexpired temporary password (if any); member rows need a 
 
 **Revoke vs. concurrent login:** admin login re-reads the user under its row lock (`with_password_unchanged`)
 and creates the session only if the user is still active, still an admin and the temporary password (if any)
-is unexpired. `change_admin_role!` takes the same row lock (threaded test).
+is unexpired. `change_admin_role!` takes the same row lock, after the role-change advisory lock (threaded test).
 
 ## Audit: `admin_role_changes`
-`user_id` (FK, no cascade), `previous_role`, `new_role`, `action`, `changed_by` (operator, not blank),
-`note`, `created_at`. Actions: `provision`, `recover`, `grant`, `revoke` (plus `bootstrap` and
+`user_id` (FK, no cascade), `previous_role`, `new_role`, `action`, `changed_by` (operator, or the acting
+admin's email; not blank), `changed_by_user_id` (A1.4 portal changes; FK, no cascade), `note`, `created_at`. Actions: `provision`, `recover`, `grant`, `revoke` (plus `bootstrap` and
 `emergency_replace`, kept only so A1.1 rows stay valid). `previous_role ≠ new_role` except for `recover`
 (credentials reissued, role unchanged), which also needs a non-blank `note`. Each row is written in the same
 transaction as the change.
@@ -146,7 +167,7 @@ out of shell history. Hand the password over in person or by phone.
 |---|---|---|
 | `bin/rails admin:provision_super_admin EMAIL=… NAME=… OPERATOR=…` | Once, on an unprovisioned system | Creates the system identity (verified email, `must_change_password`, 72 h temporary password); audit `provision`. Refused once a system identity exists in any state, or if the email belongs to any account. |
 | `bin/rails admin:recover_super_admin OPERATOR=… REASON=… [NEW_EMAIL=… NEW_NAME=…]` | Emergency: lost password, compromised, disabled | Same identity, never a new one: new temporary password, forced change, re-enabled, **every session ended**; optionally re-pointed to a newly designated person (email verified, change recorded). Audit `recover` with REASON in `note`. |
-| `bin/rails admin:grant EMAIL=… ROLE=president\|treasurer OPERATOR=…` / `admin:revoke EMAIL=… OPERATOR=…` | Interim, until the portal | Member accounts only; refuse `super_admin` and the system account. Idempotent. |
+| `bin/rails admin:grant EMAIL=… ROLE=president\|treasurer OPERATOR=…` / `admin:revoke EMAIL=… OPERATOR=…` | Operator fallback to the portal | Member accounts only; refuse `super_admin`, the system account, and an office someone already holds (revoke them first). Idempotent. |
 
 Before provisioning or re-pointing, confirm the designated person out of band. Admin accounts for President and
 Treasurer come from public registration, which proves control of an email address only: confirm the officer
@@ -169,8 +190,14 @@ password, which is why **admin MFA is a production requirement**.
   registration can't create or claim it; President and Treasurer keep member sign-in and applications.
 - `test/integration/admin_race_test.rb` (threads): revoke racing logins; concurrent provisioning → one;
   parallel password changes with the same old password → one winner; expiry under parallel requests.
-- `test/tasks/admin_tasks_test.rb`: every task, the terminal and confirmation guards, refusals, the password
-  shown once and never logged.
+- `test/tasks/admin_tasks_test.rb`: every task, the terminal and confirmation guards, refusals (an occupied
+  office too), the password shown once and never logged.
+- A1.4: `test/controllers/api/v1/admin/administrators_controller_test.rb` and `role_changes_controller_test.rb`
+  (Super Admin only; President/Treasurer/member/anonymous refused; CSRF/Origin; temporary password; spoofed
+  roles and actors; ineligible, system and self targets; office swap with two audit rows and the holder
+  signed out; member data unchanged; read-only history); `admin_access_test.rb` (one holder per office,
+  `assign_admin_office!` atomicity and actor); `admin_race_test.rb` (concurrent assignments to a vacant office
+  and across both offices).
 
 ## Dependencies
 - 0 (CSRF, Origin, rotation), 2 (verified email), 3 (sessions), 5 (password reset).

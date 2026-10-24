@@ -1,9 +1,12 @@
 import { Navigate, type RouteObject } from "react-router"
 
 import { RequireAdmin } from "@/components/admin-layout"
+import { RequireSuperAdmin } from "@/components/admin-shell"
+import { AdminAuditPage } from "@/pages/admin-audit-page"
 import { AdminHomePage } from "@/pages/admin-home-page"
 import { AdminLoginPage } from "@/pages/admin-login-page"
 import { AdminPasswordPage } from "@/pages/admin-password-page"
+import { AdminRolesPage } from "@/pages/admin-roles-page"
 import { ApplyPage } from "@/pages/apply-page"
 import { ForgotPasswordPage } from "@/pages/forgot-password-page"
 import { LoginPage } from "@/pages/login-page"
@@ -29,6 +32,14 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <AdminHomePage /> },
       { path: "password", element: <AdminPasswordPage /> },
+      // Super Admin only (other admins go to /admin; Rails refuses them the data anyway).
+      {
+        element: <RequireSuperAdmin />,
+        children: [
+          { path: "roles", element: <AdminRolesPage /> },
+          { path: "audit", element: <AdminAuditPage /> },
+        ],
+      },
       { path: "*", element: <Navigate to="/admin" replace /> },
     ],
   },

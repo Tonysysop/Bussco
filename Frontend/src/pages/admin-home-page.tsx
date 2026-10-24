@@ -11,6 +11,7 @@ import {
   useAdminSignOut,
 } from "@/components/admin-layout"
 import { adminMeQuery, apiErrorMessage, type AdminMe } from "@/lib/api"
+import { AdminOverviewPage } from "@/pages/admin-overview-page"
 
 const ROLE_LABELS: Record<AdminMe["user"]["admin_role"], string> = {
   super_admin: "Super Admin",
@@ -18,14 +19,16 @@ const ROLE_LABELS: Record<AdminMe["user"]["admin_role"], string> = {
   treasurer: "Treasurer",
 }
 
-// Placeholder landing page behind RequireAdmin until the admin dashboard is built: who is signed in, and
-// sign out. The role shown is Rails' answer; it grants nothing here.
+// /admin: the Super Admin gets the management workspace. President and Treasurer keep this placeholder
+// (who is signed in, and sign out) until their dashboards are built. The role shown is Rails' answer;
+// it grants nothing here.
 export function AdminHomePage() {
   const admin = useQuery(adminMeQuery)
   const logout = useAdminSignOut()
 
   const user = admin.data?.user
   if (!user) return null
+  if (user.admin_role === "super_admin") return <AdminOverviewPage />
 
   return (
     <AdminLayout>

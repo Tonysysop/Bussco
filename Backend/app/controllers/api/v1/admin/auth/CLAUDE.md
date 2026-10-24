@@ -7,8 +7,9 @@ identity store, on the `bussco_admin` cookie and admin session rows. Roles: Supe
 (only `/me`, logout and the password change skip it, by name), `require_admin_role` for privileged actions.
 
 Constraints:
-- No admin signup or role assignment via API. Provisioning is operator-run
-  (`lib/tasks/admin.rake`) only; roles change only through `User#change_admin_role!` (audited).
+- No admin signup here. The Super Admin is provisioned by operators only (`lib/tasks/admin.rake`).
+  President/Treasurer change only through `User#change_admin_role!` / `assign_admin_office!` (audited),
+  from the operator tasks or the Super Admin endpoints in `../administrators_controller.rb` (A1.4).
 - Non-admin credentials get the same 401 as bad credentials.
 - Do not add financial approval permissions — they are undefined.
 - Reuse the CSRF/origin checks (increment 0) and session machinery (increment 3); don't fork them.
